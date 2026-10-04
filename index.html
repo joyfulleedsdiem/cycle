@@ -230,6 +230,12 @@
       </div>
 
       <div class="modal-section">
+        <h3>Account</h3>
+        <p class="hint" id="account-info"></p>
+        <button id="btn-logout" class="btn btn-ghost">Log out</button>
+      </div>
+
+      <div class="modal-section">
         <h3>Cycle averages</h3>
         <p class="hint">Auto-calculated from your logged periods. You can override. Period length is always taken from the days you select when logging a period.</p>
         <label>
@@ -256,7 +262,7 @@
 
       <div class="modal-section">
         <h3>Privacy & data</h3>
-        <p class="hint">Everything you enter stays only in this browser, on this device. No account, no server, no analytics, nothing shared with anyone. This is not medical advice. <a href="privacy.html" target="_blank">Read the full privacy & disclaimer page</a>.</p>
+        <p class="hint">Your data is stored securely under your own account, protected so only you can read or write it. No analytics, no advertising, nothing shared with anyone. This is not medical advice. <a href="privacy.html" target="_blank">Read the full privacy & disclaimer page</a>.</p>
       </div>
     </div>
   </div>
@@ -264,37 +270,110 @@
   <!-- Onboarding modal -->
   <div id="modal-onboarding" class="modal-overlay hidden">
     <div class="modal">
-      <h2>Welcome</h2>
-      <p class="hint">Let's set up your cycle so the calendar can show your phases. You can always change this later in Settings.</p>
-      <form id="onboarding-form">
-        <div class="field-label">Tap every day of your last period</div>
+
+      <div id="welcome-step-landing" class="welcome-step">
+        <h2>Welcome</h2>
+        <p class="hint">Set up your cycle, or log back in if you've already got an account.</p>
+        <button type="button" id="btn-welcome-start-signup" class="btn btn-accent btn-block">Create account</button>
+        <button type="button" id="btn-welcome-start-login" class="btn btn-ghost btn-block">Log in</button>
+      </div>
+
+      <div id="welcome-step-login" class="welcome-step hidden">
+        <h2>Log in</h2>
+        <form id="login-form">
+          <label>
+            Email
+            <input type="email" id="login-email" required autocomplete="email" />
+          </label>
+          <label>
+            Password
+            <input type="password" id="login-password" required autocomplete="current-password" />
+          </label>
+          <p id="login-error" class="hint error-text"></p>
+          <button type="submit" class="btn btn-accent btn-block">Log in</button>
+        </form>
+        <button type="button" id="btn-login-google" class="btn btn-ghost btn-block">Continue with Google</button>
+        <button type="button" class="btn btn-ghost btn-block" data-back-to="welcome-step-landing">&larr; Back</button>
+      </div>
+
+      <div id="welcome-step-name" class="welcome-step hidden">
+        <h2>What's your name?</h2>
+        <form id="welcome-name-form">
+          <input type="text" id="welcome-name-input" placeholder="Your name" required maxlength="40" />
+          <button type="submit" class="btn btn-accent btn-block">Continue</button>
+        </form>
+      </div>
+
+      <div id="welcome-step-period" class="welcome-step hidden">
+        <h2>When was your last period?</h2>
+        <p class="hint">Tap the first day &mdash; we'll guess 5 days from there. Tap any day to add or remove it.</p>
         <div class="mini-calendar">
           <nav class="month-nav">
-            <button type="button" id="btn-onboard-prev-month" class="btn-icon" aria-label="Previous month">&#8592;</button>
-            <span id="onboard-picker-label" class="month-nav-center"></span>
-            <button type="button" id="btn-onboard-next-month" class="btn-icon" aria-label="Next month">&#8594;</button>
+            <button type="button" id="btn-welcome-prev-month" class="btn-icon" aria-label="Previous month">&#8592;</button>
+            <span id="welcome-picker-label" class="month-nav-center"></span>
+            <button type="button" id="btn-welcome-next-month" class="btn-icon" aria-label="Next month">&#8594;</button>
           </nav>
           <div class="weekday-row">
             <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
           </div>
-          <div id="onboard-calendar-grid" class="calendar-grid"></div>
+          <div id="welcome-calendar-grid" class="calendar-grid"></div>
         </div>
-        <p id="onboard-selection-summary" class="hint" style="text-align:center;"></p>
-        <label>
-          Average cycle length (days)
-          <input type="number" id="onboard-cycle-length" min="15" max="60" value="28" />
-        </label>
-        <p class="hint">Pick an accent colour</p>
-        <div id="onboard-color-swatches" class="color-swatches"></div>
-        <label class="consent-label">
-          <input type="checkbox" id="onboard-consent" required />
-          <span>I understand this app is not medical advice, and that everything I enter stays only on this device (<a href="privacy.html" target="_blank">privacy details</a>).</span>
-        </label>
-        <button type="submit" class="btn btn-accent">Start</button>
-      </form>
+        <p id="welcome-selection-summary" class="hint" style="text-align:center;"></p>
+        <button type="button" id="btn-welcome-period-continue" class="btn btn-accent btn-block">Continue</button>
+      </div>
+
+      <div id="welcome-step-cyclelen" class="welcome-step hidden">
+        <h2>Is your cycle about 28 days?</h2>
+        <p class="hint">From the first day of one period to the first day of the next.</p>
+        <div class="view-row" style="justify-content:center;">
+          <button type="button" id="btn-cyclelen-yes" class="btn btn-accent">Yes, about 28</button>
+          <button type="button" id="btn-cyclelen-no" class="btn btn-ghost">Not quite</button>
+        </div>
+        <div id="cyclelen-custom" class="hidden">
+          <label>
+            How many days, roughly?
+            <input type="number" id="welcome-cycle-length" min="15" max="60" value="28" />
+          </label>
+          <button type="button" id="btn-cyclelen-custom-continue" class="btn btn-accent btn-block">Continue</button>
+        </div>
+      </div>
+
+      <div id="welcome-step-colour" class="welcome-step hidden">
+        <h2>Pick an accent colour</h2>
+        <div id="welcome-color-swatches" class="color-swatches"></div>
+        <button type="button" id="btn-colour-continue" class="btn btn-accent btn-block">Continue</button>
+      </div>
+
+      <div id="welcome-step-account" class="welcome-step hidden">
+        <h2>Create your account</h2>
+        <form id="signup-form">
+          <label>
+            Email
+            <input type="email" id="signup-email" required autocomplete="email" />
+          </label>
+          <label>
+            Password
+            <input type="password" id="signup-password" required minlength="6" autocomplete="new-password" />
+          </label>
+          <label class="consent-label">
+            <input type="checkbox" id="onboard-consent" required />
+            <span>I understand this app is not medical advice, and that my data is stored securely under my own account, never shared (<a href="privacy.html" target="_blank">privacy details</a>).</span>
+          </label>
+          <p id="signup-error" class="hint error-text"></p>
+          <button type="submit" class="btn btn-accent btn-block">Create account</button>
+        </form>
+        <button type="button" id="btn-signup-google" class="btn btn-ghost btn-block">Continue with Google instead</button>
+        <button type="button" class="btn btn-ghost btn-block" data-back-to="welcome-step-landing">&larr; Back</button>
+      </div>
+
     </div>
   </div>
 
-  <script src="app.js?v=13"></script>
+  <div id="welcome-loading" class="welcome-loading hidden">
+    <div class="spinner"></div>
+  </div>
+
+  <script type="module" src="firebase.js?v=1"></script>
+  <script src="app.js?v=14"></script>
 </body>
 </html>

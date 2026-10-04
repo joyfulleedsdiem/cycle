@@ -7,6 +7,7 @@ const COLOR_PRESETS = ['#c1567b', '#b23a6b', '#e08a6f', '#a97ca5', '#7c9473'];
 function defaultData() {
   return {
     onboarded: false,
+    profile: { name: '' },
     periods: [],       // [{id, start: 'YYYY-MM-DD', length: number|null}]
     events: {},         // { 'YYYY-MM-DD': [{id, title, time: 'HH:MM'|null}] }
     inbox: [],           // [{id, title, createdAt}]
@@ -21,16 +22,25 @@ function defaultData() {
   };
 }
 
+// Merges any partial/stored data object onto a fresh default, guarding
+// against shapes saved by older versions of the app.
+function normalizeData(parsed) {
+  const merged = Object.assign(defaultData(), parsed || {}, {
+    settings: Object.assign(defaultData().settings, (parsed && parsed.settings) || {}),
+    profile: Object.assign(defaultData().profile, (parsed && parsed.profile) || {})
+  });
+  if (!Array.isArray(merged.patterns)) merged.patterns = [];
+  if (!Array.isArray(merged.periods)) merged.periods = [];
+  if (!Array.isArray(merged.inbox)) merged.inbox = [];
+  if (!merged.events || typeof merged.events !== 'object') merged.events = {};
+  return merged;
+}
+
 function loadData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultData();
-    const parsed = JSON.parse(raw);
-    const merged = Object.assign(defaultData(), parsed, {
-      settings: Object.assign(defaultData().settings, parsed.settings || {})
-    });
-    if (!Array.isArray(merged.patterns)) merged.patterns = [];
-    return merged;
+    return normalizeData(JSON.parse(raw));
   } catch (e) {
     console.error('Failed to load data, starting fresh', e);
     return defaultData();
@@ -39,10 +49,16 @@ function loadData() {
 
 function saveData() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data));
+  if (state.user && window.CycleAuth) {
+    window.CycleAuth.saveUserDoc(state.user.uid, state.data).catch(err => {
+      console.error('Cloud save failed', err);
+    });
+  }
 }
 
 const state = {
   data: loadData(),
+  user: null,
   viewYear: null,
   viewMonth: null, // 0-indexed
   activeDayISO: null,
@@ -50,9 +66,11 @@ const state = {
   pendingPatternDates: new Set(),
   patternPickerYear: null,
   patternPickerMonth: null,
-  onboardSelectedDates: new Set(),
-  onboardPickerYear: null,
-  onboardPickerMonth: null,
+  welcomePeriodDates: new Set(),
+  welcomePickerYear: null,
+  welcomePickerMonth: null,
+  welcomeName: '',
+  welcomeCycleLength: 28,
   logPeriodSelectedDates: new Set(),
   logPeriodPickerYear: null,
   logPeriodPickerMonth: null,
@@ -784,7 +802,7 @@ function renderColorSwatches(containerId) {
 
 function renderAllColorSwatches() {
   renderColorSwatches('color-swatches');
-  renderColorSwatches('onboard-color-swatches');
+  renderColorSwatches('welcome-color-swatches');
 }
 
 // ---------- Cycle wheel ----------
@@ -860,6 +878,9 @@ function renderSettings() {
   document.getElementById('setting-cycle-length').value = getAvgCycleLength();
   renderPeriodHistory();
   renderAllColorSwatches();
+  const name = state.data.profile && state.data.profile.name;
+  const email = state.user && state.user.email;
+  document.getElementById('account-info').textContent = [name, email].filter(Boolean).join(' · ') || 'Signed in';
 }
 
 function formatPeriodRange(p) {
@@ -959,35 +980,115 @@ function closeLogPeriodModal() {
   }
 }
 
-function renderOnboardPicker() {
-  document.getElementById('onboard-picker-label').textContent = formatMonthLabel(state.onboardPickerYear, state.onboardPickerMonth);
-  renderDatePickerGrid(document.getElementById('onboard-calendar-grid'), state.onboardPickerYear, state.onboardPickerMonth, {
-    isSelected: (iso) => state.onboardSelectedDates.has(iso),
-    onDayClick: (iso) => toggleOnboardDate(iso)
+// ---------- Welcome wizard (signup / login) ----------
+
+function showWelcomeStep(stepId) {
+  document.querySelectorAll('.welcome-step').forEach(el => el.classList.add('hidden'));
+  document.getElementById(stepId).classList.remove('hidden');
+}
+
+function showLoading() {
+  document.getElementById('welcome-loading').classList.remove('hidden');
+}
+
+function hideLoading() {
+  document.getElementById('welcome-loading').classList.add('hidden');
+}
+
+function renderWelcomePicker() {
+  document.getElementById('welcome-picker-label').textContent = formatMonthLabel(state.welcomePickerYear, state.welcomePickerMonth);
+  renderDatePickerGrid(document.getElementById('welcome-calendar-grid'), state.welcomePickerYear, state.welcomePickerMonth, {
+    isSelected: (iso) => state.welcomePeriodDates.has(iso),
+    onDayClick: (iso) => handleWelcomePeriodDayClick(iso)
   });
 }
 
-function toggleOnboardDate(iso) {
-  if (state.onboardSelectedDates.has(iso)) {
-    state.onboardSelectedDates.delete(iso);
+// First tap on an empty selection auto-fills a 5-day guess from that date;
+// after that, every tap just toggles that single day on/off.
+function handleWelcomePeriodDayClick(iso) {
+  if (state.welcomePeriodDates.size === 0) {
+    const start = fromISO(iso);
+    for (let i = 0; i < 5; i++) state.welcomePeriodDates.add(toISO(addDays(start, i)));
+  } else if (state.welcomePeriodDates.has(iso)) {
+    state.welcomePeriodDates.delete(iso);
   } else {
-    state.onboardSelectedDates.add(iso);
+    state.welcomePeriodDates.add(iso);
   }
-  renderOnboardPicker();
-  renderOnboardSummary();
+  renderWelcomePicker();
+  renderWelcomeSelectionSummary();
 }
 
-function renderOnboardSummary() {
-  const summary = document.getElementById('onboard-selection-summary');
-  const dates = [...state.onboardSelectedDates].sort();
+function renderWelcomeSelectionSummary() {
+  const summary = document.getElementById('welcome-selection-summary');
+  const dates = [...state.welcomePeriodDates].sort();
   if (!dates.length) {
-    summary.textContent = 'Tap the days your period lasted, above.';
+    summary.textContent = 'Tap the first day of your last period, above.';
     return;
   }
   const range = dates.length > 1
     ? `${shortDateLabel(dates[0])} – ${shortDateLabel(dates[dates.length - 1])}`
     : shortDateLabel(dates[0]);
   summary.textContent = `${dates.length} day${dates.length === 1 ? '' : 's'} selected (${range})`;
+}
+
+function humanizeAuthError(err) {
+  const code = err && err.code;
+  const map = {
+    'auth/email-already-in-use': 'That email already has an account — try logging in instead.',
+    'auth/invalid-email': 'That doesn\'t look like a valid email address.',
+    'auth/weak-password': 'Password needs to be at least 6 characters.',
+    'auth/wrong-password': 'Wrong password.',
+    'auth/invalid-credential': 'Incorrect email or password.',
+    'auth/user-not-found': 'No account found with that email.',
+    'auth/popup-closed-by-user': 'Google sign-in was closed before finishing.',
+    'auth/network-request-failed': 'Network error — check your connection and try again.'
+  };
+  return map[code] || 'Something went wrong. Please try again.';
+}
+
+// Shared finish step for both email/password signup and Google sign-up:
+// awaits the auth call, then builds the new account's data from whatever
+// was collected earlier in the wizard (name, period days, cycle length,
+// accent colour) and saves it as that user's very first cloud record.
+async function finishAccountCreation(authAction, errorElId) {
+  const errorEl = document.getElementById(errorElId);
+  errorEl.textContent = '';
+  showLoading();
+  try {
+    const cred = await authAction();
+    const newData = defaultData();
+    newData.onboarded = true;
+    newData.profile.name = state.welcomeName;
+    const dates = [...state.welcomePeriodDates].sort();
+    if (dates.length) {
+      newData.periods.push({ id: uid(), start: dates[0], length: dates.length });
+    }
+    newData.settings.cycleLengthOverride = (state.welcomeCycleLength && state.welcomeCycleLength !== 28) ? state.welcomeCycleLength : null;
+    newData.settings.accentColor = state.data.settings.accentColor;
+    state.user = cred.user;
+    state.data = newData;
+    saveData();
+    hideLoading();
+    hideModal('modal-onboarding');
+    applyAccentColor();
+    renderAll();
+  } catch (err) {
+    hideLoading();
+    errorEl.textContent = humanizeAuthError(err);
+  }
+}
+
+async function finishLogin(authAction) {
+  const errorEl = document.getElementById('login-error');
+  errorEl.textContent = '';
+  showLoading();
+  try {
+    await authAction();
+    // onAuthStateChanged will pick up the new session, fetch cloud data, and render.
+  } catch (err) {
+    hideLoading();
+    errorEl.textContent = humanizeAuthError(err);
+  }
 }
 
 function removePeriod(id) {
@@ -1031,10 +1132,7 @@ function importData(file) {
   reader.onload = () => {
     try {
       const parsed = JSON.parse(reader.result);
-      state.data = Object.assign(defaultData(), parsed, {
-        settings: Object.assign(defaultData().settings, parsed.settings || {})
-      });
-      if (!Array.isArray(state.data.patterns)) state.data.patterns = [];
+      state.data = normalizeData(parsed);
       saveData();
       applyAccentColor();
       renderAll();
@@ -1065,18 +1163,34 @@ function init() {
 
   applyAccentColor();
   renderAllColorSwatches();
-
-  state.onboardSelectedDates = new Set([toISO(today)]);
-  state.onboardPickerYear = today.getFullYear();
-  state.onboardPickerMonth = today.getMonth();
-  renderOnboardPicker();
-  renderOnboardSummary();
-
-  if (!state.data.onboarded) {
-    showModal('modal-onboarding');
-  }
-
   renderAll();
+
+  state.welcomePickerYear = today.getFullYear();
+  state.welcomePickerMonth = today.getMonth();
+  renderWelcomePicker();
+  renderWelcomeSelectionSummary();
+
+  showLoading();
+  window.CycleAuth.onAuthStateChanged(async (user) => {
+    if (user) {
+      state.user = user;
+      try {
+        const cloudData = await window.CycleAuth.getUserDoc(user.uid);
+        if (cloudData) state.data = normalizeData(cloudData);
+      } catch (err) {
+        console.error('Failed to load cloud data', err);
+      }
+      hideModal('modal-onboarding');
+      applyAccentColor();
+      renderAll();
+      hideLoading();
+    } else {
+      state.user = null;
+      hideLoading();
+      showModal('modal-onboarding');
+      showWelcomeStep('welcome-step-landing');
+    }
+  });
 
   // Month nav
   document.getElementById('btn-prev-month').addEventListener('click', () => {
@@ -1379,7 +1493,7 @@ function init() {
     renderLegend();
   });
 
-  document.getElementById('onboard-color-swatches').addEventListener('click', (e) => {
+  document.getElementById('welcome-color-swatches').addEventListener('click', (e) => {
     const hex = e.target.dataset.color;
     if (!hex) return;
     state.data.settings.accentColor = hex;
@@ -1394,41 +1508,132 @@ function init() {
   document.getElementById('import-file-input').addEventListener('change', (e) => {
     if (e.target.files[0]) importData(e.target.files[0]);
   });
-  document.getElementById('btn-clear-data').addEventListener('click', () => {
-    if (confirm('This will permanently delete all logged periods, plans, and settings on this device. Continue?')) {
-      localStorage.removeItem(STORAGE_KEY);
-      state.data = defaultData();
-      applyAccentColor();
-      hideModal('modal-settings');
-      showModal('modal-onboarding');
-      renderAll();
+  document.getElementById('btn-clear-data').addEventListener('click', async () => {
+    const message = state.user
+      ? 'This will permanently delete your account\'s data from the cloud and log you out. Continue?'
+      : 'This will permanently delete all logged periods, plans, and settings on this device. Continue?';
+    if (!confirm(message)) return;
+    localStorage.removeItem(STORAGE_KEY);
+    if (state.user) {
+      try {
+        await window.CycleAuth.deleteUserDoc(state.user.uid);
+        await window.CycleAuth.logOut();
+      } catch (err) {
+        console.error('Failed to delete cloud data', err);
+      }
+      state.user = null;
     }
+    state.data = defaultData();
+    applyAccentColor();
+    hideModal('modal-settings');
+    showModal('modal-onboarding');
+    showWelcomeStep('welcome-step-landing');
+    renderAll();
   });
 
-  // Onboarding
-  document.getElementById('btn-onboard-prev-month').addEventListener('click', () => {
-    state.onboardPickerMonth--;
-    if (state.onboardPickerMonth < 0) { state.onboardPickerMonth = 11; state.onboardPickerYear--; }
-    renderOnboardPicker();
-  });
-  document.getElementById('btn-onboard-next-month').addEventListener('click', () => {
-    state.onboardPickerMonth++;
-    if (state.onboardPickerMonth > 11) { state.onboardPickerMonth = 0; state.onboardPickerYear++; }
-    renderOnboardPicker();
-  });
-  document.getElementById('onboarding-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const dates = [...state.onboardSelectedDates].sort();
-    if (!dates.length) return;
-    const startISO = dates[0];
-    const periodLen = dates.length;
-    const cycleLen = parseInt(document.getElementById('onboard-cycle-length').value, 10) || 28;
-    applySettingsValues(cycleLen, null);
-    state.data.periods.push({ id: uid(), start: startISO, length: periodLen });
-    state.data.onboarded = true;
-    saveData();
-    hideModal('modal-onboarding');
+  document.getElementById('btn-logout').addEventListener('click', async () => {
+    if (!confirm('Log out of this account on this device?')) return;
+    try {
+      await window.CycleAuth.logOut();
+    } catch (err) {
+      console.error('Logout failed', err);
+    }
+    localStorage.removeItem(STORAGE_KEY);
+    state.user = null;
+    state.data = defaultData();
+    applyAccentColor();
+    hideModal('modal-settings');
+    showModal('modal-onboarding');
+    showWelcomeStep('welcome-step-landing');
     renderAll();
+  });
+
+  // Welcome wizard: landing choice
+  document.getElementById('btn-welcome-start-signup').addEventListener('click', () => {
+    state.welcomeName = '';
+    state.welcomePeriodDates = new Set();
+    state.welcomeCycleLength = 28;
+    document.getElementById('welcome-name-input').value = '';
+    document.getElementById('cyclelen-custom').classList.add('hidden');
+    document.getElementById('signup-error').textContent = '';
+    document.getElementById('signup-form').reset();
+    renderWelcomePicker();
+    renderWelcomeSelectionSummary();
+    showWelcomeStep('welcome-step-name');
+  });
+  document.getElementById('btn-welcome-start-login').addEventListener('click', () => {
+    document.getElementById('login-error').textContent = '';
+    document.getElementById('login-form').reset();
+    showWelcomeStep('welcome-step-login');
+  });
+  document.querySelectorAll('[data-back-to]').forEach(btn => {
+    btn.addEventListener('click', () => showWelcomeStep(btn.dataset.backTo));
+  });
+
+  // Welcome wizard: login
+  document.getElementById('login-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    finishLogin(() => window.CycleAuth.logIn(email, password));
+  });
+  document.getElementById('btn-login-google').addEventListener('click', () => {
+    finishLogin(() => window.CycleAuth.signInWithGoogle());
+  });
+
+  // Welcome wizard: name
+  document.getElementById('welcome-name-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    state.welcomeName = document.getElementById('welcome-name-input').value.trim();
+    showWelcomeStep('welcome-step-period');
+  });
+
+  // Welcome wizard: period days
+  document.getElementById('btn-welcome-prev-month').addEventListener('click', () => {
+    state.welcomePickerMonth--;
+    if (state.welcomePickerMonth < 0) { state.welcomePickerMonth = 11; state.welcomePickerYear--; }
+    renderWelcomePicker();
+  });
+  document.getElementById('btn-welcome-next-month').addEventListener('click', () => {
+    state.welcomePickerMonth++;
+    if (state.welcomePickerMonth > 11) { state.welcomePickerMonth = 0; state.welcomePickerYear++; }
+    renderWelcomePicker();
+  });
+  document.getElementById('btn-welcome-period-continue').addEventListener('click', () => {
+    showWelcomeStep('welcome-step-cyclelen');
+  });
+
+  // Welcome wizard: cycle length
+  document.getElementById('btn-cyclelen-yes').addEventListener('click', () => {
+    state.welcomeCycleLength = 28;
+    showWelcomeStep('welcome-step-colour');
+  });
+  document.getElementById('btn-cyclelen-no').addEventListener('click', () => {
+    document.getElementById('cyclelen-custom').classList.remove('hidden');
+  });
+  document.getElementById('btn-cyclelen-custom-continue').addEventListener('click', () => {
+    state.welcomeCycleLength = parseInt(document.getElementById('welcome-cycle-length').value, 10) || 28;
+    showWelcomeStep('welcome-step-colour');
+  });
+
+  // Welcome wizard: colour
+  document.getElementById('btn-colour-continue').addEventListener('click', () => {
+    showWelcomeStep('welcome-step-account');
+  });
+
+  // Welcome wizard: create account
+  document.getElementById('signup-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const email = document.getElementById('signup-email').value.trim();
+    const password = document.getElementById('signup-password').value;
+    finishAccountCreation(() => window.CycleAuth.signUp(email, password), 'signup-error');
+  });
+  document.getElementById('btn-signup-google').addEventListener('click', () => {
+    if (!document.getElementById('onboard-consent').checked) {
+      document.getElementById('signup-error').textContent = 'Please check the box above first.';
+      return;
+    }
+    finishAccountCreation(() => window.CycleAuth.signInWithGoogle(), 'signup-error');
   });
 }
 

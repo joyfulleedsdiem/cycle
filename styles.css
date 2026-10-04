@@ -1063,6 +1063,54 @@ input[type="number"] {
   margin-top: 8px;
 }
 
+/* Welcome wizard */
+
+.welcome-step {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.welcome-step form {
+  display: flex;
+  flex-direction: column;
+}
+
+.welcome-step input[type="text"],
+.welcome-step input[type="email"],
+.welcome-step input[type="password"],
+.welcome-step input[type="number"] {
+  margin-bottom: 10px;
+}
+
+.error-text {
+  color: var(--danger);
+  min-height: 1em;
+}
+
+.welcome-loading {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .hidden {
   display: none !important;
 }
