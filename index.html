@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>Cycle Calendar</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+
+    <header class="topbar">
+      <button id="btn-cycle-icon" class="icon-chip" title="Your cycle" aria-label="Your cycle">&#129656;</button>
+      <h1 class="app-title">cycle.</h1>
+      <div class="topbar-actions">
+        <button id="btn-expand-view" class="icon-chip" title="Week view" aria-label="Toggle week view">&#10530;</button>
+        <button id="btn-patterns" class="icon-chip" title="Pattern log" aria-label="Pattern log">&#128269;</button>
+        <button id="btn-settings" class="icon-chip" title="Settings" aria-label="Settings">&#9881;</button>
+      </div>
+    </header>
+
+    <section class="calendar-card">
+      <div id="month-nav-wrap">
+        <nav class="month-nav">
+          <button id="btn-prev-month" class="btn-icon" aria-label="Previous month">&#8592;</button>
+          <div class="month-nav-center">
+            <span id="month-label"></span>
+            <button id="btn-today" class="btn btn-ghost">Today</button>
+          </div>
+          <button id="btn-next-month" class="btn-icon" aria-label="Next month">&#8594;</button>
+        </nav>
+      </div>
+
+      <div id="week-nav-wrap" class="hidden">
+        <nav class="month-nav">
+          <button id="btn-prev-week" class="btn-icon" aria-label="Previous week">&#8592;</button>
+          <div class="month-nav-center">
+            <span id="week-label"></span>
+            <button id="btn-this-week" class="btn btn-ghost">This week</button>
+          </div>
+          <button id="btn-next-week" class="btn-icon" aria-label="Next week">&#8594;</button>
+        </nav>
+      </div>
+
+      <div class="phase-mode-toggle" id="phase-mode-toggle">
+        <button data-mode="period" class="mode-btn">Period only</button>
+        <button data-mode="all" class="mode-btn">All phases</button>
+      </div>
+
+      <div id="today-card" class="today-card hidden">
+        <h3>Today</h3>
+        <ul id="today-agenda-list" class="today-agenda-list"></ul>
+        <div id="today-phase-note" class="today-phase-note"></div>
+      </div>
+
+      <div id="month-grid-wrap">
+        <div class="weekday-row">
+          <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+        </div>
+        <div id="calendar-grid" class="calendar-grid"></div>
+      </div>
+
+      <div id="week-grid-wrap" class="hidden">
+        <div id="week-grid" class="week-grid"></div>
+      </div>
+
+      <div class="legend" id="legend"></div>
+
+      <button id="btn-log-period" class="btn btn-accent btn-block">+ Log period</button>
+    </section>
+
+    <section class="brain">
+      <div class="brain-header">
+        <h2>Brain</h2>
+        <span class="hint">Jot it down. Give it a date when you're ready.</span>
+      </div>
+      <form id="inbox-form" class="inbox-form">
+        <input type="text" id="inbox-input" placeholder="Add something..." maxlength="140" />
+        <button type="submit" class="btn-add" aria-label="Add">+</button>
+      </form>
+      <ul id="inbox-list" class="bullet-list"></ul>
+    </section>
+
+    <footer class="disclaimer">
+      Phases are estimates based on the dates you log, not a medical diagnosis or medical advice — actual hormone timing varies cycle to cycle. Your data stays on this device only. <a href="privacy.html" target="_blank">Privacy & disclaimer</a>
+    </footer>
+  </div>
+
+  <!-- Day detail modal -->
+  <div id="modal-day" class="modal-overlay hidden">
+    <div class="modal">
+      <button class="modal-close" data-close="modal-day" aria-label="Close">&times;</button>
+      <h2 id="day-modal-date"></h2>
+      <div id="day-modal-phase" class="phase-banner"></div>
+
+      <div class="modal-section">
+        <div class="modal-section-header">
+          <h3>Plans</h3>
+          <span class="hint">Tap a time to add. Tap a plan to edit.</span>
+        </div>
+        <div id="day-timeline" class="day-timeline"></div>
+        <form id="event-form" class="event-form">
+          <input type="text" id="event-title" placeholder="Add a plan or task..." required maxlength="140" />
+          <input type="time" id="event-time" />
+          <button type="submit" id="event-form-submit" class="btn btn-accent">Add</button>
+        </form>
+        <div class="edit-actions hidden" id="edit-actions">
+          <button type="button" id="btn-delete-edit-event" class="btn btn-danger">Delete</button>
+          <button type="button" id="btn-cancel-edit-event" class="btn btn-ghost">Cancel edit</button>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <button id="btn-toggle-period-day" class="btn btn-ghost"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log period modal -->
+  <div id="modal-log-period" class="modal-overlay hidden">
+    <div class="modal">
+      <button class="modal-close" data-close="modal-log-period" aria-label="Close">&times;</button>
+      <h2 id="log-period-heading">Log a period</h2>
+      <form id="log-period-form">
+        <div class="field-label">Tap every day your period lasted</div>
+        <div class="mini-calendar">
+          <nav class="month-nav">
+            <button type="button" id="btn-log-period-prev-month" class="btn-icon" aria-label="Previous month">&#8592;</button>
+            <span id="log-period-picker-label" class="month-nav-center"></span>
+            <button type="button" id="btn-log-period-next-month" class="btn-icon" aria-label="Next month">&#8594;</button>
+          </nav>
+          <div class="weekday-row">
+            <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+          </div>
+          <div id="log-period-calendar-grid" class="calendar-grid"></div>
+        </div>
+        <p id="log-period-selection-summary" class="hint" style="text-align:center;"></p>
+        <button type="submit" id="log-period-form-submit" class="btn btn-accent btn-block">Save</button>
+        <div class="edit-actions hidden" id="log-period-edit-actions">
+          <button type="button" id="btn-delete-log-period" class="btn btn-danger">Delete</button>
+          <button type="button" id="btn-cancel-log-period-edit" class="btn btn-ghost">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Cycle detail modal -->
+  <div id="modal-cycle" class="modal-overlay hidden">
+    <div class="modal">
+      <button class="modal-close" data-close="modal-cycle" aria-label="Close">&times;</button>
+      <h2>Your cycle</h2>
+
+      <div id="next-period-headline" class="next-period-headline"></div>
+
+      <div class="wheel-wrap">
+        <svg id="cycle-wheel" viewBox="0 0 200 200"></svg>
+        <div class="wheel-center">
+          <span id="wheel-day"></span>
+          <span id="wheel-phase"></span>
+        </div>
+      </div>
+
+      <p id="cycle-blurb" class="hint" style="text-align:center;"></p>
+
+      <div class="stat-row">
+        <div class="stat-card">
+          <span class="stat-value" id="stat-cycle-length"></span>
+          <span class="stat-label">Average cycle length</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="stat-period-length"></span>
+          <span class="stat-label">Average period length</span>
+        </div>
+      </div>
+
+      <button id="btn-cycle-log-today" class="btn btn-accent btn-block">Log period start today</button>
+      <button id="btn-cycle-open-settings" class="btn btn-ghost btn-block">Edit cycle settings</button>
+    </div>
+  </div>
+
+  <!-- Pattern log modal -->
+  <div id="modal-patterns" class="modal-overlay hidden">
+    <div class="modal">
+      <button class="modal-close" data-close="modal-patterns" aria-label="Close">&times;</button>
+      <h2>Pattern log</h2>
+
+      <div class="modal-section">
+        <h3>Applies to</h3>
+        <ul id="pattern-selected-days" class="selected-days-list"></ul>
+        <p id="pattern-selection-hint" class="hint hidden">Select at least one day to add a note.</p>
+      </div>
+
+      <div class="modal-section">
+        <ul id="pattern-list" class="event-list"></ul>
+        <form id="pattern-form" class="event-form">
+          <input type="text" id="pattern-text" placeholder="What did you notice?" required maxlength="200" />
+          <button type="submit" class="btn btn-accent">Add</button>
+        </form>
+      </div>
+
+      <button type="button" id="btn-pattern-pick-date" class="btn btn-ghost btn-block">+ Add another day &#9662;</button>
+
+      <div id="pattern-date-picker" class="hidden">
+        <nav class="month-nav">
+          <button id="btn-pattern-prev-month" class="btn-icon" aria-label="Previous month">&#8592;</button>
+          <span id="pattern-picker-label" class="month-nav-center"></span>
+          <button id="btn-pattern-next-month" class="btn-icon" aria-label="Next month">&#8594;</button>
+        </nav>
+        <div class="weekday-row">
+          <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+        </div>
+        <div id="pattern-calendar-grid" class="calendar-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings modal -->
+  <div id="modal-settings" class="modal-overlay hidden">
+    <div class="modal">
+      <button class="modal-close" data-close="modal-settings" aria-label="Close">&times;</button>
+      <h2>Settings</h2>
+
+      <div class="modal-section">
+        <h3>Accent colour</h3>
+        <p class="hint">Colours your period days and buttons throughout the app.</p>
+        <div id="color-swatches" class="color-swatches"></div>
+      </div>
+
+      <div class="modal-section">
+        <h3>Cycle averages</h3>
+        <p class="hint">Auto-calculated from your logged periods. You can override. Period length is always taken from the days you select when logging a period.</p>
+        <label>
+          Average cycle length (days)
+          <input type="number" id="setting-cycle-length" min="15" max="60" />
+        </label>
+        <button id="btn-save-settings" class="btn btn-accent">Save</button>
+      </div>
+
+      <div class="modal-section">
+        <h3>Period history</h3>
+        <ul id="period-history-list" class="period-history-list"></ul>
+      </div>
+
+      <div class="modal-section">
+        <h3>Data</h3>
+        <div class="settings-data-actions">
+          <button id="btn-export-data" class="btn btn-ghost">Export backup</button>
+          <button id="btn-import-data" class="btn btn-ghost">Import backup</button>
+          <button id="btn-clear-data" class="btn btn-danger">Clear all data</button>
+        </div>
+        <input type="file" id="import-file-input" accept="application/json" class="hidden" />
+      </div>
+
+      <div class="modal-section">
+        <h3>Privacy & data</h3>
+        <p class="hint">Everything you enter stays only in this browser, on this device. No account, no server, no analytics, nothing shared with anyone. This is not medical advice. <a href="privacy.html" target="_blank">Read the full privacy & disclaimer page</a>.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Onboarding modal -->
+  <div id="modal-onboarding" class="modal-overlay hidden">
+    <div class="modal">
+      <h2>Welcome</h2>
+      <p class="hint">Let's set up your cycle so the calendar can show your phases. You can always change this later in Settings.</p>
+      <form id="onboarding-form">
+        <div class="field-label">Tap every day of your last period</div>
+        <div class="mini-calendar">
+          <nav class="month-nav">
+            <button type="button" id="btn-onboard-prev-month" class="btn-icon" aria-label="Previous month">&#8592;</button>
+            <span id="onboard-picker-label" class="month-nav-center"></span>
+            <button type="button" id="btn-onboard-next-month" class="btn-icon" aria-label="Next month">&#8594;</button>
+          </nav>
+          <div class="weekday-row">
+            <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+          </div>
+          <div id="onboard-calendar-grid" class="calendar-grid"></div>
+        </div>
+        <p id="onboard-selection-summary" class="hint" style="text-align:center;"></p>
+        <label>
+          Average cycle length (days)
+          <input type="number" id="onboard-cycle-length" min="15" max="60" value="28" />
+        </label>
+        <p class="hint">Pick an accent colour</p>
+        <div id="onboard-color-swatches" class="color-swatches"></div>
+        <label class="consent-label">
+          <input type="checkbox" id="onboard-consent" required />
+          <span>I understand this app is not medical advice, and that everything I enter stays only on this device (<a href="privacy.html" target="_blank">privacy details</a>).</span>
+        </label>
+        <button type="submit" class="btn btn-accent">Start</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js?v=13"></script>
+</body>
+</html>
