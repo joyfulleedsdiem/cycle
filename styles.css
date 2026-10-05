@@ -468,129 +468,6 @@ body {
   border-color: var(--accent);
 }
 
-/* Today card */
-
-.today-card {
-  background: var(--bg-1);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 14px 16px;
-  margin-bottom: 14px;
-}
-
-.today-card h3 {
-  font-family: var(--serif);
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  margin: 0 0 8px;
-  font-size: 1.05rem;
-}
-
-.today-agenda-list {
-  list-style: none;
-  margin: 0 0 10px;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.today-agenda-list li {
-  display: flex;
-  gap: 8px;
-  font-size: 0.88rem;
-  align-items: baseline;
-}
-
-.today-agenda-list .agenda-time {
-  color: var(--text-muted);
-  font-size: 0.76rem;
-  min-width: 46px;
-}
-
-.today-agenda-list.empty {
-  font-style: italic;
-  color: var(--text-muted);
-  font-size: 0.85rem;
-}
-
-.today-phase-note {
-  font-size: 0.8rem;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border-top: 1px dashed var(--border);
-  padding-top: 10px;
-  border-radius: 0;
-}
-
-/* Week view */
-
-.week-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-}
-
-.week-day-cell {
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  cursor: pointer;
-  padding: 6px 3px;
-  min-height: 190px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  font-family: var(--sans);
-  color: var(--text);
-}
-
-.week-day-cell.today {
-  border-color: var(--accent);
-  border-width: 2px;
-}
-
-.week-day-cell .week-day-label {
-  font-size: 0.62rem;
-  color: var(--text-muted);
-  letter-spacing: 0.03em;
-}
-
-.week-day-cell .day-num-circle {
-  width: 26px;
-  height: 26px;
-  font-size: 0.75rem;
-}
-
-.week-day-cell .week-blocks {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  margin-top: 4px;
-  width: 100%;
-  overflow-y: auto;
-}
-
-.week-day-cell .block-chip {
-  background: var(--accent);
-  color: var(--accent-text);
-  font-size: 0.6rem;
-  line-height: 1.3;
-  padding: 3px 4px;
-  border-radius: 5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-align: left;
-  width: 100%;
-}
-
-.week-day-cell .block-more {
-  font-size: 0.58rem;
-  color: var(--text-muted);
-}
-
 .weekday-row {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -663,26 +540,21 @@ body {
   margin-bottom: 8px;
 }
 
-.day-cell.is-period .day-num-circle,
-.week-day-cell.is-period .day-num-circle {
+.day-cell.is-period .day-num-circle {
   background: var(--accent);
   color: var(--accent-text);
   font-weight: 600;
 }
 
-.day-cell.is-period.is-predicted .day-num-circle,
-.week-day-cell.is-period.is-predicted .day-num-circle {
+.day-cell.is-period.is-predicted .day-num-circle {
   background: transparent;
   border: 1.5px dashed var(--accent);
   color: var(--accent);
 }
 
-.day-cell.is-follicular .day-num-circle,
-.week-day-cell.is-follicular .day-num-circle { background: color-mix(in srgb, var(--phase-follicular) 32%, transparent); }
-.day-cell.is-ovulatory .day-num-circle,
-.week-day-cell.is-ovulatory .day-num-circle { background: color-mix(in srgb, var(--phase-ovulatory) 32%, transparent); }
-.day-cell.is-luteal .day-num-circle,
-.week-day-cell.is-luteal .day-num-circle { background: color-mix(in srgb, var(--phase-luteal) 32%, transparent); }
+.day-cell.is-follicular .day-num-circle { background: color-mix(in srgb, var(--phase-follicular) 32%, transparent); }
+.day-cell.is-ovulatory .day-num-circle { background: color-mix(in srgb, var(--phase-ovulatory) 32%, transparent); }
+.day-cell.is-luteal .day-num-circle { background: color-mix(in srgb, var(--phase-luteal) 32%, transparent); }
 
 .day-cell .ovulation-mark {
   font-size: 0.5rem;
@@ -702,6 +574,191 @@ body {
   height: 4px;
   border-radius: 50%;
   background: var(--text-muted);
+}
+
+/* Squares view */
+
+.squares-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.square-cell {
+  position: relative;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 5px 4px;
+  min-height: 54px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  font-family: var(--sans);
+  color: var(--text);
+  overflow: hidden;
+}
+
+.square-cell.empty {
+  background: none;
+  border: none;
+  cursor: default;
+}
+
+.square-cell.today {
+  border-color: var(--text);
+  border-width: 1.5px;
+}
+
+.square-num {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.square-peek {
+  font-size: 0.6rem;
+  line-height: 1.2;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.square-cell.is-period { background: color-mix(in srgb, var(--accent) 20%, var(--bg-1)); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.square-cell.is-period.is-predicted { background: var(--bg-1); border: 1.5px dashed var(--accent); }
+.square-cell.is-follicular { background: color-mix(in srgb, var(--phase-follicular) 20%, var(--bg-1)); }
+.square-cell.is-ovulatory { background: color-mix(in srgb, var(--phase-ovulatory) 20%, var(--bg-1)); }
+.square-cell.is-luteal { background: color-mix(in srgb, var(--phase-luteal) 20%, var(--bg-1)); }
+
+/* Accordion view */
+
+.accordion-list {
+  position: relative;
+  padding-left: 26px;
+}
+
+.accordion-row {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--border);
+  padding: 12px 4px 12px 0;
+  cursor: pointer;
+}
+
+.accordion-row:last-child {
+  border-bottom: 1px solid var(--border);
+}
+
+.accordion-row.is-period { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.accordion-row.is-follicular { background: color-mix(in srgb, var(--phase-follicular) 10%, transparent); }
+.accordion-row.is-ovulatory { background: color-mix(in srgb, var(--phase-ovulatory) 10%, transparent); }
+.accordion-row.is-luteal { background: color-mix(in srgb, var(--phase-luteal) 10%, transparent); }
+
+.accordion-row-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.accordion-day-name {
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.accordion-row.expanded .accordion-day-name {
+  font-family: var(--serif);
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.accordion-day-date {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.accordion-phase {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 4px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.accordion-phase .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.accordion-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.accordion-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+}
+
+.accordion-item-time {
+  width: 52px;
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.accordion-item-more {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.accordion-ghost {
+  font-size: 0.78rem;
+  color: var(--text-faint);
+  margin: 6px 0 0;
+}
+
+.accordion-event-bar {
+  position: absolute;
+  width: 3px;
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.accordion-event-label {
+  position: absolute;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .legend {

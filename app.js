@@ -17,7 +17,7 @@ function defaultData() {
       periodLengthOverride: null,
       phaseMode: 'period',   // 'all' | 'period'
       accentColor: COLOR_PRESETS[0],
-      expandedView: false
+      calendarMode: 'dots' // 'dots' | 'squares' | 'accordion'
     }
   };
 }
@@ -377,16 +377,19 @@ function renderPhaseModeToggle() {
   });
 }
 
-function updateExpandButton() {
-  const btn = document.getElementById('btn-expand-view');
-  const expanded = state.data.settings.expandedView;
-  btn.classList.toggle('active', expanded);
-  btn.title = expanded ? 'Month view' : 'Week view';
+const CALENDAR_MODE_NEXT_LABEL = { dots: 'Squares view', squares: 'Week view', accordion: 'Dots view' };
 
-  document.getElementById('month-nav-wrap').classList.toggle('hidden', expanded);
-  document.getElementById('week-nav-wrap').classList.toggle('hidden', !expanded);
-  document.getElementById('month-grid-wrap').classList.toggle('hidden', expanded);
-  document.getElementById('week-grid-wrap').classList.toggle('hidden', !expanded);
+function updateCalendarMode() {
+  const btn = document.getElementById('btn-expand-view');
+  const mode = state.data.settings.calendarMode;
+  btn.classList.toggle('active', mode !== 'dots');
+  btn.title = CALENDAR_MODE_NEXT_LABEL[mode];
+
+  document.getElementById('month-nav-wrap').classList.toggle('hidden', mode === 'accordion');
+  document.getElementById('week-nav-wrap').classList.toggle('hidden', mode !== 'accordion');
+  document.getElementById('month-grid-wrap').classList.toggle('hidden', mode !== 'dots');
+  document.getElementById('squares-grid-wrap').classList.toggle('hidden', mode !== 'squares');
+  document.getElementById('accordion-wrap').classList.toggle('hidden', mode !== 'accordion');
 }
 
 // ---------- Rendering: calendar ----------
@@ -510,7 +513,8 @@ function renderMonth() {
     grid.appendChild(cell);
   }
 
-  renderWeek();
+  renderSquares();
+  renderAccordion();
 }
 
 // ---------- Rendering: week view ----------
@@ -533,44 +537,41 @@ function formatWeekLabel(weekStart) {
   return `${startStr} – ${endStr}`;
 }
 
-function renderWeek() {
-  if (!state.viewWeekStart) state.viewWeekStart = getWeekStart(new Date());
-  const weekStart = state.viewWeekStart;
-  document.getElementById('week-label').textContent = formatWeekLabel(weekStart);
+// ---------- Rendering: squares view ----------
 
-  const grid = document.getElementById('week-grid');
+function renderSquares() {
+  const { viewYear, viewMonth } = state;
+  const grid = document.getElementById('squares-grid');
   grid.innerHTML = '';
+
+  const firstOfMonth = new Date(viewYear, viewMonth, 1);
+  const startWeekday = firstOfMonth.getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const todayISO = toISO(new Date());
   const phaseMode = state.data.settings.phaseMode;
 
-  for (let i = 0; i < 7; i++) {
-    const dateObj = addDays(weekStart, i);
+  for (let i = 0; i < startWeekday; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'square-cell empty';
+    grid.appendChild(cell);
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateObj = new Date(viewYear, viewMonth, day);
     const iso = toISO(dateObj);
     const info = getCycleInfo(iso);
 
     const cell = document.createElement('button');
     cell.type = 'button';
-    cell.className = 'week-day-cell';
+    cell.className = 'square-cell';
     cell.setAttribute('aria-label', dateObj.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }));
     if (iso === todayISO) cell.classList.add('today');
     applyPhaseClasses(cell, info, phaseMode);
 
-    const label = document.createElement('div');
-    label.className = 'week-day-label';
-    label.textContent = dateObj.toLocaleDateString(undefined, { weekday: 'short' });
-    cell.appendChild(label);
-
-    const circle = document.createElement('div');
-    circle.className = 'day-num-circle';
-    circle.textContent = String(dateObj.getDate());
-    cell.appendChild(circle);
-
-    if (info.phase === 'ovulatory' && phaseMode === 'all') {
-      const mark = document.createElement('span');
-      mark.className = 'ovulation-mark';
-      mark.textContent = '✦';
-      cell.appendChild(mark);
-    }
+    const num = document.createElement('span');
+    num.className = 'square-num';
+    num.textContent = String(day);
+    cell.appendChild(num);
 
     if (hasPatternForDate(iso)) {
       const line = document.createElement('div');
@@ -578,56 +579,146 @@ function renderWeek() {
       cell.appendChild(line);
     }
 
-    const blocks = document.createElement('div');
-    blocks.className = 'week-blocks';
     const dayEvents = getEventsForDate(iso);
-    const sorted = [...dayEvents].sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
-    sorted.slice(0, 5).forEach(ev => {
-      const chip = document.createElement('div');
-      chip.className = 'block-chip';
-      chip.textContent = ev.title;
-      if (ev.color) chip.style.background = ev.color;
-      blocks.appendChild(chip);
-    });
-    if (sorted.length > 5) {
-      const more = document.createElement('div');
-      more.className = 'block-more';
-      more.textContent = `+${sorted.length - 5} more`;
-      blocks.appendChild(more);
+    if (dayEvents.length) {
+      const peek = document.createElement('span');
+      peek.className = 'square-peek';
+      if (dayEvents.length === 1) {
+        peek.textContent = dayEvents[0].title;
+        if (dayEvents[0].color) peek.style.color = dayEvents[0].color;
+      } else {
+        peek.textContent = `${dayEvents.length} plans`;
+      }
+      cell.appendChild(peek);
     }
-    cell.appendChild(blocks);
 
     cell.addEventListener('click', () => openDayModal(iso));
     grid.appendChild(cell);
   }
 }
 
-// ---------- Rendering: today card ----------
+// ---------- Rendering: accordion (week, expanded) view ----------
 
-function renderTodayCard() {
-  const card = document.getElementById('today-card');
-  const expanded = state.data.settings.expandedView;
-  card.classList.toggle('hidden', !expanded);
-  if (!expanded) return;
+function getEventOccurrencesInRange(startISO, endISO) {
+  const results = [];
+  for (const record of state.data.eventRecords) {
+    for (const occ of expandOccurrences(record)) {
+      if (occ.endDate < startISO || occ.startDate > endISO) continue;
+      if (occ.startDate === occ.endDate) continue;
+      results.push({ id: record.id, title: record.title, color: record.color, occStart: occ.startDate, occEnd: occ.endDate });
+    }
+  }
+  return results;
+}
 
+function renderAccordion() {
+  if (!state.viewWeekStart) state.viewWeekStart = getWeekStart(new Date());
+  const weekStart = state.viewWeekStart;
+  document.getElementById('week-label').textContent = formatWeekLabel(weekStart);
+
+  const list = document.getElementById('accordion-list');
+  list.innerHTML = '';
   const todayISO = toISO(new Date());
-  const items = getEventsForDate(todayISO).sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
-  const list = document.getElementById('today-agenda-list');
-  if (!items.length) {
-    list.innerHTML = '<li class="empty">Nothing planned for today</li>';
-  } else {
-    list.innerHTML = items.map(ev => `
-      <li><span class="agenda-time">${ev.time || 'Anytime'}</span><span>${escapeHtml(ev.title)}</span></li>
-    `).join('');
+  const phaseMode = state.data.settings.phaseMode;
+  const weekDays = [];
+
+  for (let i = 0; i < 7; i++) {
+    const dateObj = addDays(weekStart, i);
+    const iso = toISO(dateObj);
+    weekDays.push(iso);
+    const info = getCycleInfo(iso);
+    const isToday = iso === todayISO;
+    const dayEvents = getEventsForDate(iso).sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
+
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'accordion-row' + (isToday ? ' expanded' : '');
+    row.dataset.iso = iso;
+    applyPhaseClasses(row, info, phaseMode);
+
+    const head = document.createElement('div');
+    head.className = 'accordion-row-head';
+    head.innerHTML = `
+      <span class="accordion-day-name">${dateObj.toLocaleDateString(undefined, { weekday: 'long' })}</span>
+      <span class="accordion-day-date">${dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+    `;
+    row.appendChild(head);
+
+    if (isToday) {
+      const phaseData = PHASE_INFO[info.phase];
+      const phaseLine = document.createElement('p');
+      phaseLine.className = 'accordion-phase';
+      phaseLine.style.color = getPhaseColorHex(info.phase);
+      phaseLine.innerHTML = `<span class="dot"></span>${phaseData.label}`;
+      row.appendChild(phaseLine);
+    }
+
+    if (dayEvents.length) {
+      const itemsList = document.createElement('div');
+      itemsList.className = 'accordion-items';
+      const itemCap = isToday ? dayEvents.length : 2;
+      dayEvents.slice(0, itemCap).forEach(ev => {
+        const item = document.createElement('div');
+        item.className = 'accordion-item';
+        item.innerHTML = `<span class="accordion-item-time">${ev.time || 'Anytime'}</span><span>${ev.color ? `<span class="dot" style="background:${ev.color};display:inline-block;margin-right:6px;"></span>` : ''}${escapeHtml(ev.title)}</span>`;
+        itemsList.appendChild(item);
+      });
+      if (!isToday && dayEvents.length > itemCap) {
+        const more = document.createElement('div');
+        more.className = 'accordion-item-more';
+        more.textContent = `+${dayEvents.length - itemCap} more`;
+        itemsList.appendChild(more);
+      }
+      row.appendChild(itemsList);
+    } else if (!isToday) {
+      const ghost = document.createElement('p');
+      ghost.className = 'accordion-ghost';
+      ghost.textContent = 'No plans yet — tap to add';
+      row.appendChild(ghost);
+    }
+
+    row.addEventListener('click', () => openDayModal(iso));
+    list.appendChild(row);
   }
 
-  const info = getCycleInfo(todayISO);
-  const phaseData = PHASE_INFO[info.phase];
-  const note = document.getElementById('today-phase-note');
-  note.style.color = getPhaseColorHex(info.phase);
-  note.textContent = info.phase === 'unknown'
-    ? phaseData.blurb
-    : `${phaseData.label}${info.cycleDay ? ` · Day ${info.cycleDay}` : ''} — ${phaseData.blurb}`;
+  positionAccordionEventBars(weekDays);
+}
+
+function positionAccordionEventBars(weekDays) {
+  const list = document.getElementById('accordion-list');
+  list.querySelectorAll('.accordion-event-bar, .accordion-event-label').forEach(el => el.remove());
+
+  const startISO = weekDays[0], endISO = weekDays[weekDays.length - 1];
+  const occurrences = getEventOccurrencesInRange(startISO, endISO);
+
+  occurrences.forEach((occ, idx) => {
+    const visibleStart = occ.occStart < startISO ? startISO : occ.occStart;
+    const visibleEnd = occ.occEnd > endISO ? endISO : occ.occEnd;
+    const startRow = list.querySelector(`[data-iso="${visibleStart}"]`);
+    const endRow = list.querySelector(`[data-iso="${visibleEnd}"]`);
+    if (!startRow || !endRow) return;
+
+    const top = startRow.offsetTop + 14;
+    const height = (endRow.offsetTop + endRow.offsetHeight - 14) - top;
+    const leftOffset = idx * 7;
+
+    const bar = document.createElement('div');
+    bar.className = 'accordion-event-bar';
+    bar.style.top = top + 'px';
+    bar.style.height = Math.max(0, height) + 'px';
+    bar.style.left = (4 + leftOffset) + 'px';
+    bar.style.background = occ.color || 'var(--text-faint)';
+    list.appendChild(bar);
+
+    const label = document.createElement('div');
+    label.className = 'accordion-event-label';
+    label.style.top = top + 'px';
+    label.style.height = Math.max(0, height) + 'px';
+    label.style.left = (9 + leftOffset) + 'px';
+    label.style.color = occ.color || 'var(--text-faint)';
+    label.textContent = occ.title;
+    list.appendChild(label);
+  });
 }
 
 // ---------- Rendering: home (greeting) screen ----------
@@ -1381,9 +1472,8 @@ function importData(file) {
 function renderAll() {
   renderLegend();
   renderPhaseModeToggle();
-  updateExpandButton();
+  updateCalendarMode();
   renderMonth();
-  renderTodayCard();
   renderHomeScreen();
   renderInbox();
   renderSettings();
@@ -1524,7 +1614,6 @@ function init() {
     resetEventForm();
     renderDayTimeline(iso);
     renderMonth();
-    renderTodayCard();
     renderHomeScreen();
   });
 
@@ -1555,7 +1644,6 @@ function init() {
     resetEventForm();
     renderDayTimeline(iso);
     renderMonth();
-    renderTodayCard();
     renderHomeScreen();
   });
 
@@ -1587,29 +1675,30 @@ function init() {
     togglePeriodOnDay(state.activeDayISO);
   });
 
-  // Expand view toggle (month <-> week)
+  // Calendar view cycle: dots -> squares -> accordion -> dots
   document.getElementById('btn-expand-view').addEventListener('click', () => {
-    state.data.settings.expandedView = !state.data.settings.expandedView;
+    const order = ['dots', 'squares', 'accordion'];
+    const next = order[(order.indexOf(state.data.settings.calendarMode) + 1) % order.length];
+    state.data.settings.calendarMode = next;
     saveData();
-    if (state.data.settings.expandedView) {
+    if (next === 'accordion' && !state.viewWeekStart) {
       state.viewWeekStart = getWeekStart(new Date());
     }
-    updateExpandButton();
+    updateCalendarMode();
     renderMonth();
-    renderTodayCard();
   });
 
   document.getElementById('btn-prev-week').addEventListener('click', () => {
     state.viewWeekStart = addDays(state.viewWeekStart, -7);
-    renderWeek();
+    renderAccordion();
   });
   document.getElementById('btn-next-week').addEventListener('click', () => {
     state.viewWeekStart = addDays(state.viewWeekStart, 7);
-    renderWeek();
+    renderAccordion();
   });
   document.getElementById('btn-this-week').addEventListener('click', () => {
     state.viewWeekStart = getWeekStart(new Date());
-    renderWeek();
+    renderAccordion();
   });
 
   // Log period modal
