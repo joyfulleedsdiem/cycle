@@ -9,7 +9,7 @@ function defaultData() {
     onboarded: false,
     profile: { name: '' },
     periods: [],       // [{id, start: 'YYYY-MM-DD', length: number|null}]
-    events: {},         // { 'YYYY-MM-DD': [{id, title, time: 'HH:MM'|null}] }
+    eventRecords: [],   // [{id, title, time: 'HH:MM'|null, startDate, endDate: 'YYYY-MM-DD', recurrence: null|{freq:'daily'|'weekly'|'biweekly', until:'YYYY-MM-DD'}, color: null|'#hex'}]
     inbox: [],           // [{id, title, createdAt}]
     patterns: [],         // [{id, text, dates: ['YYYY-MM-DD', ...], createdAt}]
     settings: {
@@ -32,7 +32,29 @@ function normalizeData(parsed) {
   if (!Array.isArray(merged.patterns)) merged.patterns = [];
   if (!Array.isArray(merged.periods)) merged.periods = [];
   if (!Array.isArray(merged.inbox)) merged.inbox = [];
-  if (!merged.events || typeof merged.events !== 'object') merged.events = {};
+  if (!Array.isArray(merged.eventRecords)) merged.eventRecords = [];
+
+  // One-time migration from the old per-date event map (pre-span/recurrence
+  // schema) into the new flat eventRecords list. Only runs for data saved
+  // before this change; already-migrated data has no `events` key.
+  if (parsed && parsed.events && typeof parsed.events === 'object' && !Array.isArray(parsed.eventRecords)) {
+    for (const [date, items] of Object.entries(parsed.events)) {
+      if (!Array.isArray(items)) continue;
+      for (const item of items) {
+        merged.eventRecords.push({
+          id: item.id || uid(),
+          title: item.title,
+          time: item.time || null,
+          startDate: date,
+          endDate: date,
+          recurrence: null,
+          color: null
+        });
+      }
+    }
+  }
+  delete merged.events;
+
   return merged;
 }
 
@@ -131,6 +153,73 @@ function hexToRgb(hex) {
 
 function colorWithAlpha(hex, alpha) {
   return `rgba(${hexToRgb(hex)},${alpha})`;
+}
+
+// ---------- Event records (span + recurrence expansion) ----------
+
+function addEventRecord({ title, time, startDate, endDate, recurrence, color }) {
+  const record = {
+    id: uid(),
+    title,
+    time: time || null,
+    startDate,
+    endDate: endDate || startDate,
+    recurrence: recurrence || null,
+    color: color || null
+  };
+  state.data.eventRecords.push(record);
+  return record;
+}
+
+function stepRecurrenceDate(iso, freq) {
+  const d = fromISO(iso);
+  if (freq === 'daily') return toISO(addDays(d, 1));
+  if (freq === 'weekly') return toISO(addDays(d, 7));
+  if (freq === 'biweekly') return toISO(addDays(d, 14));
+  return null;
+}
+
+// Expands one event record into every concrete {startDate, endDate} span it
+// occupies, honoring its recurrence rule (bounded by `until`, required on
+// every recurring record so this always terminates).
+function expandOccurrences(record) {
+  const spanLen = diffDays(fromISO(record.endDate), fromISO(record.startDate));
+  const occurrences = [{ startDate: record.startDate, endDate: record.endDate }];
+  if (record.recurrence && record.recurrence.freq && record.recurrence.until) {
+    let cursor = record.startDate;
+    for (let guard = 0; guard < 366; guard++) {
+      const nextStart = stepRecurrenceDate(cursor, record.recurrence.freq);
+      if (!nextStart || nextStart > record.recurrence.until) break;
+      occurrences.push({ startDate: nextStart, endDate: toISO(addDays(fromISO(nextStart), spanLen)) });
+      cursor = nextStart;
+    }
+  }
+  return occurrences;
+}
+
+// Flattens all event records onto a single date, including any day of a
+// multi-day span and any recurrence occurrence that covers it.
+function getEventsForDate(iso) {
+  const results = [];
+  for (const record of state.data.eventRecords) {
+    for (const occ of expandOccurrences(record)) {
+      if (iso >= occ.startDate && iso <= occ.endDate) {
+        results.push({
+          id: record.id,
+          title: record.title,
+          time: record.time,
+          color: record.color,
+          occStart: occ.startDate,
+          occEnd: occ.endDate,
+          isSpanStart: iso === occ.startDate,
+          isSpanEnd: iso === occ.endDate,
+          isMultiDay: occ.startDate !== occ.endDate
+        });
+        break;
+      }
+    }
+  }
+  return results;
 }
 
 // ---------- Cycle logic ----------
@@ -407,7 +496,7 @@ function renderMonth() {
       cell.appendChild(line);
     }
 
-    const dayEvents = state.data.events[iso] || [];
+    const dayEvents = getEventsForDate(iso);
     const dots = document.createElement('div');
     dots.className = 'day-dots';
     if (dayEvents.length) {
@@ -489,7 +578,7 @@ function renderWeek() {
 
     const blocks = document.createElement('div');
     blocks.className = 'week-blocks';
-    const dayEvents = state.data.events[iso] || [];
+    const dayEvents = getEventsForDate(iso);
     const sorted = [...dayEvents].sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
     sorted.slice(0, 5).forEach(ev => {
       const chip = document.createElement('div');
@@ -519,7 +608,7 @@ function renderTodayCard() {
   if (!expanded) return;
 
   const todayISO = toISO(new Date());
-  const items = (state.data.events[todayISO] || []).slice().sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
+  const items = getEventsForDate(todayISO).sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
   const list = document.getElementById('today-agenda-list');
   if (!items.length) {
     list.innerHTML = '<li class="empty">Nothing planned for today</li>';
@@ -681,7 +770,7 @@ function resetEventForm() {
 
 function renderDayTimeline(iso) {
   const container = document.getElementById('day-timeline');
-  const items = state.data.events[iso] || [];
+  const items = getEventsForDate(iso);
   const timed = items.filter(ev => ev.time);
   const anytime = items.filter(ev => !ev.time);
 
@@ -719,7 +808,7 @@ function renderDayTimeline(iso) {
 }
 
 function startEditingEvent(iso, id) {
-  const ev = (state.data.events[iso] || []).find(e => e.id === id);
+  const ev = state.data.eventRecords.find(e => e.id === id);
   if (!ev) return;
   state.editingEventId = id;
   document.getElementById('event-title').value = ev.title;
@@ -769,8 +858,7 @@ function removeInboxItem(id) {
 function assignInboxItemToDate(id, iso) {
   const item = state.data.inbox.find(i => i.id === id);
   if (!item || !iso) return;
-  if (!state.data.events[iso]) state.data.events[iso] = [];
-  state.data.events[iso].push({ id: uid(), title: item.title, time: null });
+  addEventRecord({ title: item.title, time: null, startDate: iso, endDate: iso });
   state.data.inbox = state.data.inbox.filter(i => i.id !== id);
   saveData();
   renderInbox();
@@ -1281,12 +1369,11 @@ function init() {
     const title = titleInput.value.trim();
     if (!title || !state.activeDayISO) return;
     const iso = state.activeDayISO;
-    if (!state.data.events[iso]) state.data.events[iso] = [];
     if (state.editingEventId) {
-      const ev = state.data.events[iso].find(e2 => e2.id === state.editingEventId);
+      const ev = state.data.eventRecords.find(e2 => e2.id === state.editingEventId);
       if (ev) { ev.title = title; ev.time = timeInput.value || null; }
     } else {
-      state.data.events[iso].push({ id: uid(), title, time: timeInput.value || null });
+      addEventRecord({ title, time: timeInput.value || null, startDate: iso, endDate: iso });
     }
     saveData();
     resetEventForm();
@@ -1317,7 +1404,7 @@ function init() {
   document.getElementById('btn-delete-edit-event').addEventListener('click', () => {
     if (!state.editingEventId || !state.activeDayISO) return;
     const iso = state.activeDayISO;
-    state.data.events[iso] = (state.data.events[iso] || []).filter(ev => ev.id !== state.editingEventId);
+    state.data.eventRecords = state.data.eventRecords.filter(ev => ev.id !== state.editingEventId);
     saveData();
     resetEventForm();
     renderDayTimeline(iso);
