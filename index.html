@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=3" />
+  <link rel="stylesheet" href="styles.css?v=6" />
 </head>
 <body>
   <div id="app">
@@ -135,11 +135,43 @@
           <span class="hint">Tap a time to add. Tap a plan to edit.</span>
         </div>
         <div id="day-timeline" class="day-timeline"></div>
-        <form id="event-form" class="event-form">
-          <input type="text" id="event-title" placeholder="Add a plan or task..." required maxlength="140" />
-          <input type="time" id="event-time" />
-          <button type="submit" id="event-form-submit" class="btn btn-accent">Add</button>
+        <form id="event-form" class="event-form-wrap">
+          <div class="event-form">
+            <input type="text" id="event-title" placeholder="Add a plan or task..." required maxlength="140" />
+            <input type="time" id="event-time" />
+            <button type="submit" id="event-form-submit" class="btn btn-accent">Add</button>
+          </div>
+
+          <button type="button" id="btn-toggle-event-options" class="event-options-toggle">+ Lasts multiple days, repeats, or colour &#9662;</button>
+
+          <div id="event-options" class="event-options hidden">
+            <label class="event-option-row">
+              <span>Ends</span>
+              <input type="date" id="event-end-date" />
+            </label>
+
+            <label class="event-option-row">
+              <span>Repeats</span>
+              <select id="event-recurrence">
+                <option value="">Doesn't repeat</option>
+                <option value="daily">Every day</option>
+                <option value="weekly">Weekly, same day</option>
+                <option value="biweekly">Every 2 weeks</option>
+              </select>
+            </label>
+
+            <label class="event-option-row hidden" id="event-recur-until-row">
+              <span>Until</span>
+              <input type="date" id="event-recur-until" />
+            </label>
+
+            <div class="event-option-row">
+              <span>Colour</span>
+              <div id="event-color-swatches" class="color-swatches"></div>
+            </div>
+          </div>
         </form>
+
         <div class="edit-actions hidden" id="edit-actions">
           <button type="button" id="btn-delete-edit-event" class="btn btn-danger">Delete</button>
           <button type="button" id="btn-cancel-edit-event" class="btn btn-ghost">Cancel edit</button>
@@ -407,6 +439,6 @@
   </div>
 
   <script type="module" src="firebase.js?v=1"></script>
-  <script src="app.js?v=16"></script>
+  <script src="app.js?v=18"></script>
 </body>
 </html>

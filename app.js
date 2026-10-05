@@ -85,6 +85,7 @@ const state = {
   viewMonth: null, // 0-indexed
   activeDayISO: null,
   editingEventId: null,
+  pendingEventColor: null,
   pagerAtMonth: false,
   pendingPatternDates: new Set(),
   patternPickerYear: null,
@@ -501,7 +502,7 @@ function renderMonth() {
     const dots = document.createElement('div');
     dots.className = 'day-dots';
     if (dayEvents.length) {
-      dots.innerHTML = dayEvents.slice(0, 4).map(() => '<span class="dot"></span>').join('');
+      dots.innerHTML = dayEvents.slice(0, 4).map(ev => `<span class="dot"${ev.color ? ` style="background:${ev.color}"` : ''}></span>`).join('');
     }
     cell.appendChild(dots);
 
@@ -585,6 +586,7 @@ function renderWeek() {
       const chip = document.createElement('div');
       chip.className = 'block-chip';
       chip.textContent = ev.title;
+      if (ev.color) chip.style.background = ev.color;
       blocks.appendChild(chip);
     });
     if (sorted.length > 5) {
@@ -680,7 +682,7 @@ function renderHomeScreen() {
     list.innerHTML = `<li><button type="button" class="agenda-empty" data-open-today>Nothing planned today &mdash; tap to add</button></li>`;
   } else {
     list.innerHTML = items.map(ev => `
-      <li><button type="button" data-open-today><span class="agenda-time">${ev.time || 'Anytime'}</span><span>${escapeHtml(ev.title)}</span></button></li>
+      <li><button type="button" data-open-today><span class="agenda-time">${ev.time || 'Anytime'}</span><span>${ev.color ? `<span class="dot" style="background:${ev.color};display:inline-block;margin-right:7px;"></span>` : ''}${escapeHtml(ev.title)}</span></button></li>
     `).join('');
   }
 }
@@ -834,10 +836,34 @@ function formatHourLabel(h) {
 
 function resetEventForm() {
   state.editingEventId = null;
+  state.pendingEventColor = null;
   document.getElementById('event-title').value = '';
   document.getElementById('event-time').value = '';
   document.getElementById('event-form-submit').textContent = 'Add';
   document.getElementById('edit-actions').classList.add('hidden');
+
+  const iso = state.activeDayISO;
+  const endInput = document.getElementById('event-end-date');
+  endInput.value = iso;
+  endInput.min = iso;
+  document.getElementById('event-recurrence').value = '';
+  const untilInput = document.getElementById('event-recur-until');
+  untilInput.value = '';
+  untilInput.required = false;
+  untilInput.min = iso;
+  document.getElementById('event-recur-until-row').classList.add('hidden');
+  document.getElementById('event-options').classList.add('hidden');
+  renderEventColorSwatches();
+}
+
+function renderEventColorSwatches() {
+  const container = document.getElementById('event-color-swatches');
+  const selected = state.pendingEventColor;
+  const noneBtn = `<button type="button" class="color-swatch none${!selected ? ' selected' : ''}" data-color="" aria-label="No colour, use the app accent"></button>`;
+  const presetBtns = COLOR_PRESETS.map(hex => `
+    <button type="button" class="color-swatch${hex === selected ? ' selected' : ''}" style="background:${hex}" data-color="${hex}" aria-label="Choose colour"></button>
+  `).join('');
+  container.innerHTML = noneBtn + presetBtns;
 }
 
 function renderDayTimeline(iso) {
@@ -849,7 +875,7 @@ function renderDayTimeline(iso) {
   const anytimeHtml = `
     <div class="day-timeline-anytime">
       <span class="anytime-label">Anytime</span>
-      ${anytime.length ? anytime.map(ev => `<button type="button" class="anytime-chip" data-edit-event="${ev.id}">${escapeHtml(ev.title)}</button>`).join('') : '<span class="hint" style="margin:0;">Nothing without a set time</span>'}
+      ${anytime.length ? anytime.map(ev => `<button type="button" class="anytime-chip" data-edit-event="${ev.id}"${ev.color ? ` style="background:${ev.color};border-color:${ev.color};color:#fff;"` : ''}>${escapeHtml(ev.title)}</button>`).join('') : '<span class="hint" style="margin:0;">Nothing without a set time</span>'}
     </div>
   `;
 
@@ -861,7 +887,8 @@ function renderDayTimeline(iso) {
   const chips = timed.map(ev => {
     const [h, m] = ev.time.split(':').map(Number);
     const top = (h + m / 60) * TIMELINE_ROW_HEIGHT;
-    return `<div class="timeline-event-chip" style="top:${top}px;" data-edit-event="${ev.id}"><span class="chip-time">${ev.time}</span>${escapeHtml(ev.title)}</div>`;
+    const colorStyle = ev.color ? `background:${ev.color};` : '';
+    return `<div class="timeline-event-chip" style="top:${top}px;${colorStyle}" data-edit-event="${ev.id}"><span class="chip-time">${ev.time}</span>${escapeHtml(ev.title)}</div>`;
   }).join('');
 
   container.innerHTML = `
@@ -887,6 +914,30 @@ function startEditingEvent(iso, id) {
   document.getElementById('event-time').value = ev.time || '';
   document.getElementById('event-form-submit').textContent = 'Save';
   document.getElementById('edit-actions').classList.remove('hidden');
+
+  const endInput = document.getElementById('event-end-date');
+  endInput.value = ev.endDate;
+  endInput.min = ev.startDate;
+  document.getElementById('event-recurrence').value = ev.recurrence ? ev.recurrence.freq : '';
+  const untilInput = document.getElementById('event-recur-until');
+  const untilRow = document.getElementById('event-recur-until-row');
+  if (ev.recurrence) {
+    untilInput.value = ev.recurrence.until;
+    untilInput.min = ev.endDate;
+    untilInput.required = true;
+    untilRow.classList.remove('hidden');
+  } else {
+    untilInput.value = '';
+    untilInput.required = false;
+    untilRow.classList.add('hidden');
+  }
+
+  state.pendingEventColor = ev.color || null;
+  renderEventColorSwatches();
+
+  const hasExtras = ev.endDate !== ev.startDate || !!ev.recurrence || !!ev.color;
+  document.getElementById('event-options').classList.toggle('hidden', !hasExtras);
+
   document.getElementById('event-title').focus();
 }
 
@@ -935,6 +986,7 @@ function assignInboxItemToDate(id, iso) {
   saveData();
   renderInbox();
   renderMonth();
+  renderHomeScreen();
 }
 
 // ---------- Modals ----------
@@ -1441,20 +1493,34 @@ function init() {
     e.preventDefault();
     const titleInput = document.getElementById('event-title');
     const timeInput = document.getElementById('event-time');
+    const endInput = document.getElementById('event-end-date');
+    const recurSelect = document.getElementById('event-recurrence');
+    const untilInput = document.getElementById('event-recur-until');
     const title = titleInput.value.trim();
     if (!title || !state.activeDayISO) return;
     const iso = state.activeDayISO;
+    const endDate = endInput.value && endInput.value >= iso ? endInput.value : iso;
+    const recurrence = recurSelect.value ? { freq: recurSelect.value, until: untilInput.value } : null;
+    const color = state.pendingEventColor || null;
+
     if (state.editingEventId) {
       const ev = state.data.eventRecords.find(e2 => e2.id === state.editingEventId);
-      if (ev) { ev.title = title; ev.time = timeInput.value || null; }
+      if (ev) {
+        ev.title = title;
+        ev.time = timeInput.value || null;
+        ev.endDate = endDate;
+        ev.recurrence = recurrence;
+        ev.color = color;
+      }
     } else {
-      addEventRecord({ title, time: timeInput.value || null, startDate: iso, endDate: iso });
+      addEventRecord({ title, time: timeInput.value || null, startDate: iso, endDate, recurrence, color });
     }
     saveData();
     resetEventForm();
     renderDayTimeline(iso);
     renderMonth();
     renderTodayCard();
+    renderHomeScreen();
   });
 
   document.getElementById('day-timeline').addEventListener('click', (e) => {
@@ -1485,6 +1551,31 @@ function init() {
     renderDayTimeline(iso);
     renderMonth();
     renderTodayCard();
+    renderHomeScreen();
+  });
+
+  // Event options: toggle panel, recurrence until-date, colour swatches
+  document.getElementById('btn-toggle-event-options').addEventListener('click', () => {
+    document.getElementById('event-options').classList.toggle('hidden');
+  });
+
+  document.getElementById('event-recurrence').addEventListener('change', (e) => {
+    const untilInput = document.getElementById('event-recur-until');
+    const untilRow = document.getElementById('event-recur-until-row');
+    const active = !!e.target.value;
+    untilRow.classList.toggle('hidden', !active);
+    untilInput.required = active;
+  });
+
+  document.getElementById('event-end-date').addEventListener('change', (e) => {
+    document.getElementById('event-recur-until').min = e.target.value;
+  });
+
+  document.getElementById('event-color-swatches').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-color]');
+    if (!btn) return;
+    state.pendingEventColor = btn.dataset.color || null;
+    renderEventColorSwatches();
   });
 
   document.getElementById('btn-toggle-period-day').addEventListener('click', () => {

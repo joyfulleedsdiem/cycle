@@ -878,6 +878,72 @@ body {
   flex: 1;
 }
 
+.event-options-toggle {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 8px 0 0;
+}
+
+.event-options-toggle:hover {
+  color: var(--text);
+}
+
+.event-options {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.event-option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 0;
+}
+
+.event-option-row > span:first-child {
+  flex-shrink: 0;
+}
+
+.event-option-row input[type="date"],
+.event-option-row select {
+  flex: 1;
+  max-width: 190px;
+}
+
+.event-option-row .color-swatches {
+  margin-bottom: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.color-swatch.none {
+  background: var(--surface-solid);
+  border: 2px solid var(--border);
+  position: relative;
+}
+
+.color-swatch.none::after {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-faint);
+}
+
 label {
   display: flex;
   flex-direction: column;
@@ -890,7 +956,8 @@ label {
 input[type="text"],
 input[type="date"],
 input[type="time"],
-input[type="number"] {
+input[type="number"],
+select {
   font-family: inherit;
   font-size: 0.9rem;
   padding: 8px 10px;
@@ -898,6 +965,7 @@ input[type="number"] {
   border: 1px solid var(--border);
   background: var(--bg-1);
   color: var(--text);
+  color-scheme: light dark;
 }
 
 .period-history-list {
