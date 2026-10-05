@@ -85,6 +85,7 @@ const state = {
   viewMonth: null, // 0-indexed
   activeDayISO: null,
   editingEventId: null,
+  pagerAtMonth: false,
   pendingPatternDates: new Set(),
   patternPickerYear: null,
   patternPickerMonth: null,
@@ -625,6 +626,77 @@ function renderTodayCard() {
   note.textContent = info.phase === 'unknown'
     ? phaseData.blurb
     : `${phaseData.label}${info.cycleDay ? ` · Day ${info.cycleDay}` : ''} — ${phaseData.blurb}`;
+}
+
+// ---------- Rendering: home (greeting) screen ----------
+
+function getGreeting(date) {
+  const h = date.getHours();
+  if (h < 5) return 'Good evening';
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function ordinalSuffix(n) {
+  const v = n % 100;
+  if (v >= 11 && v <= 13) return 'th';
+  switch (n % 10) {
+    case 1: return 'st';
+    case 2: return 'nd';
+    case 3: return 'rd';
+    default: return 'th';
+  }
+}
+
+function formatGreetDate(date) {
+  const weekday = date.toLocaleDateString(undefined, { weekday: 'long' });
+  const month = date.toLocaleDateString(undefined, { month: 'long' });
+  const day = date.getDate();
+  return `${weekday} ${day}${ordinalSuffix(day)} ${month}`;
+}
+
+function renderHomeScreen() {
+  const now = new Date();
+  const todayISO = toISO(now);
+
+  document.getElementById('greet-eyebrow').textContent = getGreeting(now);
+  document.getElementById('greet-date').textContent = formatGreetDate(now);
+
+  const info = getCycleInfo(todayISO);
+  const phaseEl = document.getElementById('greet-phase');
+  const phaseTextEl = document.getElementById('greet-phase-text');
+  if (info.phase === 'unknown') {
+    phaseEl.style.color = 'var(--text-faint)';
+    phaseTextEl.textContent = 'No cycle data yet';
+  } else {
+    phaseEl.style.color = getPhaseColorHex(info.phase);
+    phaseTextEl.textContent = PHASE_INFO[info.phase].label;
+  }
+
+  const items = getEventsForDate(todayISO).sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
+  const list = document.getElementById('home-agenda-list');
+  if (!items.length) {
+    list.innerHTML = `<li><button type="button" class="agenda-empty" data-open-today>Nothing planned today &mdash; tap to add</button></li>`;
+  } else {
+    list.innerHTML = items.map(ev => `
+      <li><button type="button" data-open-today><span class="agenda-time">${ev.time || 'Anytime'}</span><span>${escapeHtml(ev.title)}</span></button></li>
+    `).join('');
+  }
+}
+
+// ---------- Today/Month pager ----------
+
+function syncPagerHeight() {
+  const viewport = document.getElementById('pager-viewport');
+  const page = document.getElementById(state.pagerAtMonth ? 'page-month' : 'page-today');
+  if (viewport && page) viewport.style.height = page.scrollHeight + 'px';
+}
+
+function goToPage(name) {
+  state.pagerAtMonth = name === 'month';
+  document.getElementById('pager').classList.toggle('at-month', state.pagerAtMonth);
+  syncPagerHeight();
 }
 
 // ---------- Pattern log ----------
@@ -1255,8 +1327,10 @@ function renderAll() {
   updateExpandButton();
   renderMonth();
   renderTodayCard();
+  renderHomeScreen();
   renderInbox();
   renderSettings();
+  syncPagerHeight();
 }
 
 function init() {
@@ -1286,6 +1360,7 @@ function init() {
       hideModal('modal-onboarding');
       applyAccentColor();
       renderAll();
+      goToPage('today');
       hideLoading();
     } else {
       state.user = null;
@@ -1557,6 +1632,39 @@ function init() {
     renderSettings();
     showModal('modal-settings');
   });
+  document.getElementById('btn-home-settings').addEventListener('click', () => {
+    renderSettings();
+    showModal('modal-settings');
+  });
+
+  // Today <-> Month pager
+  document.getElementById('btn-go-month').addEventListener('click', () => goToPage('month'));
+  document.getElementById('btn-back-today').addEventListener('click', () => goToPage('today'));
+
+  document.getElementById('home-agenda-list').addEventListener('click', (e) => {
+    if (e.target.closest('[data-open-today]')) openDayModal(toISO(new Date()));
+  });
+
+  (function setupPagerSwipe() {
+    const viewport = document.getElementById('pager-viewport');
+    let startX = null, startY = null, dragging = false;
+    viewport.addEventListener('pointerdown', (e) => {
+      startX = e.clientX; startY = e.clientY; dragging = true;
+    });
+    viewport.addEventListener('pointerup', (e) => {
+      if (!dragging || startX === null) return;
+      dragging = false;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+        if (dx < 0) goToPage('month');
+        else goToPage('today');
+      }
+      startX = null;
+    });
+  })();
+
+  window.addEventListener('resize', syncPagerHeight);
   document.getElementById('btn-save-settings').addEventListener('click', () => {
     const cycleLen = parseInt(document.getElementById('setting-cycle-length').value, 10);
     applySettingsValues(cycleLen || null, null);

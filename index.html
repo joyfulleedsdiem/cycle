@@ -10,12 +10,37 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=2" />
+  <link rel="stylesheet" href="styles.css?v=3" />
 </head>
 <body>
   <div id="app">
+   <div id="pager-viewport">
+    <div id="pager" class="pager">
+
+    <div class="pager-page" id="page-today">
+      <header class="home-topbar">
+        <span class="wordmark">cycle.</span>
+        <button id="btn-home-settings" class="icon-chip" title="Settings" aria-label="Settings">&#9881;</button>
+      </header>
+
+      <p class="greet-eyebrow" id="greet-eyebrow"></p>
+      <h1 class="greet-date" id="greet-date"></h1>
+      <p class="greet-phase" id="greet-phase"><span class="dot"></span><span id="greet-phase-text"></span></p>
+
+      <hr class="divider" />
+
+      <ul class="home-agenda-list" id="home-agenda-list"></ul>
+
+      <button type="button" class="swipe-hint" id="btn-go-month" aria-label="Go to calendar">
+        <span class="swipe-dots"><span class="on"></span><span></span></span>
+        <span class="swipe-txt">Calendar</span>
+      </button>
+    </div>
+
+    <div class="pager-page" id="page-month">
 
     <header class="topbar">
+      <button id="btn-back-today" class="icon-chip" title="Today" aria-label="Back to today">&#8592;</button>
       <button id="btn-cycle-icon" class="icon-chip" title="Your cycle" aria-label="Your cycle">&#129656;</button>
       <h1 class="app-title">cycle.</h1>
       <div class="topbar-actions">
@@ -90,6 +115,11 @@
     <footer class="disclaimer">
       Phases are estimates based on the dates you log, not a medical diagnosis or medical advice — actual hormone timing varies cycle to cycle. Your data stays on this device only. <a href="privacy.html" target="_blank">Privacy & disclaimer</a>
     </footer>
+
+    </div><!-- /#page-month -->
+
+    </div><!-- /#pager -->
+   </div><!-- /#pager-viewport -->
   </div>
 
   <!-- Day detail modal -->
@@ -377,6 +407,6 @@
   </div>
 
   <script type="module" src="firebase.js?v=1"></script>
-  <script src="app.js?v=15"></script>
+  <script src="app.js?v=16"></script>
 </body>
 </html>
