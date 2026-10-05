@@ -954,16 +954,21 @@ function renderInbox() {
   const items = state.data.inbox;
   if (!items.length) {
     list.innerHTML = '<li class="inbox-empty">Nothing here yet</li>';
-    return;
+  } else {
+    list.innerHTML = items.map(item => `
+      <li data-id="${item.id}">
+        <span class="inbox-title">${escapeHtml(item.title)}</span>
+        <input type="date" class="inbox-date-input" data-assign="${item.id}" />
+        <button data-inbox-schedule="${item.id}" title="Give this a date" aria-label="Give this a date">&#128197;</button>
+        <button data-inbox-remove="${item.id}" title="Delete" aria-label="Delete">&times;</button>
+      </li>
+    `).join('');
   }
-  list.innerHTML = items.map(item => `
-    <li data-id="${item.id}">
-      <span class="inbox-title">${escapeHtml(item.title)}</span>
-      <input type="date" class="inbox-date-input" data-assign="${item.id}" />
-      <button data-inbox-schedule="${item.id}" title="Give this a date" aria-label="Give this a date">&#128197;</button>
-      <button data-inbox-remove="${item.id}" title="Delete" aria-label="Delete">&times;</button>
-    </li>
-  `).join('');
+
+  const count = document.getElementById('brain-drawer-count');
+  count.textContent = items.length
+    ? `${items.length} unsorted`
+    : 'Nothing here yet';
 }
 
 function addInboxItem(title) {
@@ -1756,6 +1761,32 @@ function init() {
   })();
 
   window.addEventListener('resize', syncPagerHeight);
+
+  // Brain drawer: tap or drag the handle to open/close
+  function setBrainDrawerOpen(open) {
+    document.getElementById('brain-drawer').classList.toggle('open', open);
+    document.getElementById('brain-drawer-scrim').classList.toggle('visible', open);
+  }
+
+  document.getElementById('brain-drawer-handle').addEventListener('click', () => {
+    setBrainDrawerOpen(!document.getElementById('brain-drawer').classList.contains('open'));
+  });
+  document.getElementById('brain-drawer-scrim').addEventListener('click', () => setBrainDrawerOpen(false));
+
+  (function setupBrainDrawerDrag() {
+    const handle = document.getElementById('brain-drawer-handle');
+    let startY = null, dragging = false;
+    handle.addEventListener('pointerdown', (e) => { startY = e.clientY; dragging = true; });
+    handle.addEventListener('pointerup', (e) => {
+      if (!dragging || startY === null) return;
+      dragging = false;
+      const dy = e.clientY - startY;
+      if (dy < -30) setBrainDrawerOpen(true);
+      else if (dy > 30) setBrainDrawerOpen(false);
+      startY = null;
+    });
+  })();
+
   document.getElementById('btn-save-settings').addEventListener('click', () => {
     const cycleLen = parseInt(document.getElementById('setting-cycle-length').value, 10);
     applySettingsValues(cycleLen || null, null);

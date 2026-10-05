@@ -49,7 +49,95 @@ body {
 #app {
   max-width: 480px;
   margin: 0 auto;
-  padding: 18px 16px 40px;
+  padding: 18px 16px 84px;
+}
+
+/* Brain drawer */
+
+.brain-drawer-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 8, 8, 0.4);
+  z-index: 45;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.brain-drawer-scrim.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.brain-drawer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  max-width: 480px;
+  margin: 0 auto;
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  max-height: 72vh;
+  transform: translateY(calc(100% - 66px));
+  transition: transform 0.35s cubic-bezier(0.22, 0.8, 0.2, 1);
+}
+
+.brain-drawer.open {
+  transform: translateY(0);
+}
+
+.brain-drawer::before {
+  content: "";
+  display: block;
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  margin: 10px auto 0;
+  flex-shrink: 0;
+}
+
+.brain-drawer-handle {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 10px 18px 14px;
+  cursor: pointer;
+  font: inherit;
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+.brain-drawer-label {
+  font-family: var(--serif);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-size: 1rem;
+}
+
+.brain-drawer-count {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-left: auto;
+}
+
+.brain-drawer-body {
+  padding: 0 18px 20px;
+  overflow-y: auto;
+}
+
+.brain-drawer-body .hint {
+  margin: 0 0 10px;
 }
 
 /* Today/Month pager */
@@ -640,35 +728,6 @@ body {
 }
 
 /* Brain */
-
-.brain {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 22px;
-  padding: 16px 18px 18px;
-  margin-bottom: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-}
-
-.brain-header {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 10px;
-}
-
-.brain-header h2 {
-  margin: 0;
-  font-family: var(--serif);
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  font-size: 1.25rem;
-}
-
-.brain-header .hint {
-  margin: 0;
-}
 
 .inbox-form {
   display: flex;

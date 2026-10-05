@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=6" />
+  <link rel="stylesheet" href="styles.css?v=7" />
 </head>
 <body>
   <div id="app">
@@ -100,18 +100,6 @@
       <button id="btn-log-period" class="btn btn-accent btn-block">+ Log period</button>
     </section>
 
-    <section class="brain">
-      <div class="brain-header">
-        <h2>Brain</h2>
-        <span class="hint">Jot it down. Give it a date when you're ready.</span>
-      </div>
-      <form id="inbox-form" class="inbox-form">
-        <input type="text" id="inbox-input" placeholder="Add something..." maxlength="140" />
-        <button type="submit" class="btn-add" aria-label="Add">+</button>
-      </form>
-      <ul id="inbox-list" class="bullet-list"></ul>
-    </section>
-
     <footer class="disclaimer">
       Phases are estimates based on the dates you log, not a medical diagnosis or medical advice — actual hormone timing varies cycle to cycle. Your data stays on this device only. <a href="privacy.html" target="_blank">Privacy & disclaimer</a>
     </footer>
@@ -120,6 +108,22 @@
 
     </div><!-- /#pager -->
    </div><!-- /#pager-viewport -->
+
+   <div id="brain-drawer-scrim" class="brain-drawer-scrim"></div>
+   <div id="brain-drawer" class="brain-drawer">
+     <button type="button" id="brain-drawer-handle" class="brain-drawer-handle">
+       <span class="brain-drawer-label">Brain</span>
+       <span class="brain-drawer-count" id="brain-drawer-count"></span>
+     </button>
+     <div class="brain-drawer-body">
+       <span class="hint">Jot it down. Give it a date when you're ready.</span>
+       <form id="inbox-form" class="inbox-form">
+         <input type="text" id="inbox-input" placeholder="Add something..." maxlength="140" />
+         <button type="submit" class="btn-add" aria-label="Add">+</button>
+       </form>
+       <ul id="inbox-list" class="bullet-list"></ul>
+     </div>
+   </div>
   </div>
 
   <!-- Day detail modal -->
@@ -439,6 +443,6 @@
   </div>
 
   <script type="module" src="firebase.js?v=1"></script>
-  <script src="app.js?v=18"></script>
+  <script src="app.js?v=19"></script>
 </body>
 </html>
