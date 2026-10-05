@@ -1,32 +1,38 @@
 :root {
-  --bg-1: #fdf5f1;
-  --bg-2: #f7e7e0;
-  --surface: rgba(255, 255, 255, 0.82);
-  --surface-solid: #fffbf9;
-  --text: #3a2c2f;
-  --text-muted: #8d7c7e;
-  --border: #ecdcd6;
+  --bg-1: #fafafa;
+  --bg-2: #fafafa;
+  --surface: #ffffff;
+  --surface-solid: #ffffff;
+  --text: #161616;
+  --text-muted: #6e6e6e;
+  --text-faint: #aeaeae;
+  --border: #e3e3e3;
   --accent: #c1567b;
   --accent-text: #ffffff;
   --danger: #a94b3d;
 
-  --phase-follicular: #cf9a52;
-  --phase-ovulatory: #6fa588;
-  --phase-luteal: #9587bf;
+  --phase-follicular: #c3924b;
+  --phase-ovulatory: #5e9879;
+  --phase-luteal: #8876b8;
 
-  --serif: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
-  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --serif: 'Bricolage Grotesque', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --sans: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-1: #241b1f;
-    --bg-2: #1a1315;
-    --surface: rgba(45, 35, 39, 0.78);
-    --surface-solid: #2c2226;
-    --text: #f3e8e9;
-    --text-muted: #b5a2a4;
-    --border: #4a3a3e;
+    --bg-1: #0c0c0c;
+    --bg-2: #0c0c0c;
+    --surface: #161616;
+    --surface-solid: #161616;
+    --text: #f3f3f3;
+    --text-muted: #9c9c9c;
+    --text-faint: #545454;
+    --border: #2a2a2a;
+
+    --phase-follicular: #d7a868;
+    --phase-ovulatory: #7cb699;
+    --phase-luteal: #a393d4;
   }
 }
 
@@ -36,7 +42,7 @@ body {
   margin: 0;
   font-family: var(--sans);
   color: var(--text);
-  background: linear-gradient(165deg, var(--bg-1), var(--bg-2));
+  background: var(--bg-1);
   min-height: 100vh;
 }
 
@@ -57,7 +63,8 @@ body {
 
 .app-title {
   font-family: var(--serif);
-  font-style: italic;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   font-size: 1.5rem;
   margin: 0;
   color: var(--text);
@@ -145,12 +152,11 @@ body {
 
 .calendar-card {
   background: var(--surface);
-  backdrop-filter: blur(8px);
   border: 1px solid var(--border);
   border-radius: 22px;
   padding: 16px 14px 18px;
   margin-bottom: 16px;
-  box-shadow: 0 10px 30px rgba(80, 40, 50, 0.06);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
 }
 
 .month-nav {
@@ -169,6 +175,8 @@ body {
 
 #month-label {
   font-family: var(--serif);
+  font-weight: 700;
+  letter-spacing: -0.01em;
   font-size: 1.15rem;
 }
 
@@ -226,7 +234,8 @@ body {
 
 .today-card h3 {
   font-family: var(--serif);
-  font-style: italic;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   margin: 0 0 8px;
   font-size: 1.05rem;
 }
@@ -476,12 +485,11 @@ body {
 
 .brain {
   background: var(--surface);
-  backdrop-filter: blur(8px);
   border: 1px solid var(--border);
   border-radius: 22px;
   padding: 16px 18px 18px;
   margin-bottom: 16px;
-  box-shadow: 0 10px 30px rgba(80, 40, 50, 0.06);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
 }
 
 .brain-header {
@@ -495,7 +503,8 @@ body {
 .brain-header h2 {
   margin: 0;
   font-family: var(--serif);
-  font-style: italic;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   font-size: 1.25rem;
 }
 
@@ -620,6 +629,8 @@ body {
 .modal h2 {
   margin-top: 0;
   font-family: var(--serif);
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .modal-close {
@@ -810,6 +821,8 @@ input[type="number"] {
 .next-period-headline {
   text-align: center;
   font-family: var(--serif);
+  font-weight: 700;
+  letter-spacing: -0.01em;
   font-size: 1.3rem;
   margin-bottom: 4px;
   color: var(--accent);
@@ -840,6 +853,8 @@ input[type="number"] {
 
 .wheel-center #wheel-day {
   font-family: var(--serif);
+  font-weight: 700;
+  letter-spacing: -0.01em;
   font-size: 2.2rem;
   line-height: 1;
 }
@@ -873,6 +888,8 @@ input[type="number"] {
 
 .stat-value {
   font-family: var(--serif);
+  font-weight: 700;
+  letter-spacing: -0.01em;
   font-size: 1.4rem;
 }
 
@@ -923,6 +940,8 @@ input[type="number"] {
 .mini-calendar #onboard-picker-label,
 .mini-calendar #log-period-picker-label {
   font-family: var(--serif);
+  font-weight: 700;
+  letter-spacing: -0.01em;
   font-size: 0.95rem;
 }
 

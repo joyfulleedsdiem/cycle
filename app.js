@@ -816,8 +816,9 @@ function renderCycleWheel() {
   const todayISO = toISO(new Date());
   const info = getCycleInfo(todayISO);
   const svg = document.getElementById('cycle-wheel');
-  const cx = 100, cy = 100, r = 80, strokeWidth = 16;
+  const cx = 100, cy = 100, r = 80, dotRadius = 3.6;
   const circumference = 2 * Math.PI * r;
+  const numDots = Math.max(24, Math.round(circumference / 9));
   const headline = document.getElementById('next-period-headline');
 
   document.getElementById('wheel-day').textContent = info.cycleDay ? `Day ${info.cycleDay}` : '—';
@@ -827,7 +828,12 @@ function renderCycleWheel() {
   document.getElementById('stat-period-length').textContent = `${getAvgPeriodLength()} days`;
 
   if (info.phase === 'unknown') {
-    svg.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--border)" stroke-width="${strokeWidth}" />`;
+    let dots = '';
+    for (let i = 0; i < numDots; i++) {
+      const p = polarPoint(cx, cy, r, (i / numDots) * 360);
+      dots += `<circle cx="${p.x}" cy="${p.y}" r="${dotRadius}" fill="var(--border)" />`;
+    }
+    svg.innerHTML = dots;
     headline.textContent = 'Log a period to see predictions';
     return;
   }
@@ -839,19 +845,28 @@ function renderCycleWheel() {
     { phase: 'luteal', days: info.effectiveCycleLength - info.ovulatoryEnd }
   ];
 
-  let cumulative = 0;
-  const circles = segments.map(seg => {
-    const segLen = Math.max(0, (seg.days / info.effectiveCycleLength) * circumference);
-    const offset = -((cumulative / info.effectiveCycleLength) * circumference);
-    cumulative += seg.days;
-    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${getPhaseColorHex(seg.phase)}" stroke-width="${strokeWidth}" stroke-dasharray="${segLen} ${circumference - segLen}" stroke-dashoffset="${offset}" transform="rotate(-90 ${cx} ${cy})" stroke-linecap="butt" />`;
-  }).join('');
+  function phaseAtDay(dayFrac) {
+    let cum = 0;
+    for (const seg of segments) {
+      cum += seg.days;
+      if (dayFrac < cum) return seg.phase;
+    }
+    return segments[segments.length - 1].phase;
+  }
+
+  let dots = '';
+  for (let i = 0; i < numDots; i++) {
+    const dayFrac = (i / numDots) * info.effectiveCycleLength;
+    const phase = phaseAtDay(dayFrac);
+    const p = polarPoint(cx, cy, r, (i / numDots) * 360);
+    dots += `<circle cx="${p.x}" cy="${p.y}" r="${dotRadius}" fill="${getPhaseColorHex(phase)}" />`;
+  }
 
   const markerAngle = ((info.cycleDay - 0.5) / info.effectiveCycleLength) * 360;
   const markerPoint = polarPoint(cx, cy, r, markerAngle);
   const marker = `<circle cx="${markerPoint.x}" cy="${markerPoint.y}" r="7" fill="var(--surface-solid)" stroke="${getPhaseColorHex(info.phase)}" stroke-width="3" />`;
 
-  svg.innerHTML = circles + marker;
+  svg.innerHTML = dots + marker;
 
   const daysAway = diffDays(fromISO(info.nextPeriodDate), fromISO(todayISO));
   if (daysAway > 1) headline.textContent = `Period in ${daysAway} days`;
