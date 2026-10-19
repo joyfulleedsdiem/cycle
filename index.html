@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=10" />
+  <link rel="stylesheet" href="styles.css?v=11" />
 </head>
 <body>
   <div id="app">
@@ -48,13 +48,15 @@
 
     <header class="topbar">
       <button id="btn-back-today" class="icon-chip" title="Today" aria-label="Back to today">&#8592;</button>
-      <button id="btn-cycle-icon" class="icon-chip" title="Your cycle" aria-label="Your cycle">&#129656;</button>
       <h1 class="app-title">cycle.</h1>
       <div class="topbar-actions">
         <button id="btn-expand-view" class="icon-chip" title="Squares view" aria-label="Change calendar view">&#10530;</button>
         <div class="topbar-menu-wrap">
           <button id="btn-menu" class="icon-chip" title="Menu" aria-label="Open menu">&#9776;</button>
           <div id="topbar-menu" class="topbar-menu hidden">
+            <button type="button" id="menu-item-cycle" class="topbar-menu-item">
+              <span class="topbar-menu-icon menu-icon-ring"></span> My cycle
+            </button>
             <button type="button" id="menu-item-patterns" class="topbar-menu-item">
               <span class="topbar-menu-icon">&#12316;</span> Pattern log
             </button>
@@ -461,6 +463,6 @@
   </div>
 
   <script type="module" src="firebase.js?v=1"></script>
-  <script src="app.js?v=22"></script>
+  <script src="app.js?v=23"></script>
 </body>
 </html>

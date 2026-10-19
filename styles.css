@@ -576,6 +576,16 @@ body {
   color: var(--text-muted);
 }
 
+.menu-icon-ring {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-muted);
+  background: transparent;
+  margin: 0 auto;
+}
+
 .weekday-row {
   display: grid;
   grid-template-columns: repeat(7, 1fr);

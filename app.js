@@ -1757,7 +1757,8 @@ function init() {
   });
 
   // Cycle modal
-  document.getElementById('btn-cycle-icon').addEventListener('click', () => {
+  document.getElementById('menu-item-cycle').addEventListener('click', () => {
+    document.getElementById('topbar-menu').classList.add('hidden');
     renderCycleWheel();
     showModal('modal-cycle');
   });
