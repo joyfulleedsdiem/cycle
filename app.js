@@ -17,7 +17,7 @@ function defaultData() {
       periodLengthOverride: null,
       phaseMode: 'period',   // 'all' | 'period'
       accentColor: COLOR_PRESETS[0],
-      calendarMode: 'dots' // 'dots' | 'squares' | 'accordion'
+      calendarMode: 'squares' // 'squares' | 'accordion'
     }
   };
 }
@@ -54,6 +54,9 @@ function normalizeData(parsed) {
     }
   }
   delete merged.events;
+
+  // The main calendar's "dots" view was retired in favour of squares/accordion.
+  if (merged.settings.calendarMode === 'dots') merged.settings.calendarMode = 'squares';
 
   return merged;
 }
@@ -100,7 +103,8 @@ const state = {
   logPeriodPickerYear: null,
   logPeriodPickerMonth: null,
   editingPeriodId: null,
-  logPeriodReturnToSettings: false
+  logPeriodReturnToSettings: false,
+  logPeriodReturnToCycle: false
 };
 
 // ---------- Date helpers ----------
@@ -378,17 +382,16 @@ function renderPhaseModeToggle() {
   });
 }
 
-const CALENDAR_MODE_NEXT_LABEL = { dots: 'Squares view', squares: 'Week view', accordion: 'Dots view' };
+const CALENDAR_MODE_NEXT_LABEL = { squares: 'Week view', accordion: 'Month view' };
 
 function updateCalendarMode() {
   const btn = document.getElementById('btn-expand-view');
   const mode = state.data.settings.calendarMode;
-  btn.classList.toggle('active', mode !== 'dots');
+  btn.classList.toggle('active', mode === 'accordion');
   btn.title = CALENDAR_MODE_NEXT_LABEL[mode];
 
   document.getElementById('month-nav-wrap').classList.toggle('hidden', mode === 'accordion');
   document.getElementById('week-nav-wrap').classList.toggle('hidden', mode !== 'accordion');
-  document.getElementById('month-grid-wrap').classList.toggle('hidden', mode !== 'dots');
   document.getElementById('squares-grid-wrap').classList.toggle('hidden', mode !== 'squares');
   document.getElementById('accordion-wrap').classList.toggle('hidden', mode !== 'accordion');
 }
@@ -451,68 +454,6 @@ function renderDatePickerGrid(gridEl, year, month, { isSelected, onDayClick }) {
 function renderMonth() {
   const { viewYear, viewMonth } = state;
   document.getElementById('month-label').textContent = formatMonthLabel(viewYear, viewMonth);
-
-  const grid = document.getElementById('calendar-grid');
-  grid.innerHTML = '';
-
-  const firstOfMonth = new Date(viewYear, viewMonth, 1);
-  const startWeekday = firstOfMonth.getDay();
-  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const todayISO = toISO(new Date());
-  const phaseMode = state.data.settings.phaseMode;
-
-  for (let i = 0; i < startWeekday; i++) {
-    const cell = document.createElement('div');
-    cell.className = 'day-cell empty';
-    grid.appendChild(cell);
-  }
-
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dateObj = new Date(viewYear, viewMonth, day);
-    const iso = toISO(dateObj);
-    const info = getCycleInfo(iso);
-
-    const cell = document.createElement('button');
-    cell.type = 'button';
-    cell.className = 'day-cell';
-    cell.setAttribute('aria-label', dateObj.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }));
-    if (iso === todayISO) cell.classList.add('today');
-    applyPhaseClasses(cell, info, phaseMode);
-
-    const circle = document.createElement('div');
-    circle.className = 'day-num-circle';
-    circle.textContent = String(day);
-    cell.appendChild(circle);
-
-    if (info.phase === 'ovulatory' && phaseMode === 'all') {
-      const mark = document.createElement('span');
-      mark.className = 'ovulation-mark';
-      mark.textContent = '✦';
-      cell.appendChild(mark);
-    } else {
-      const spacer = document.createElement('span');
-      spacer.className = 'ovulation-mark';
-      spacer.innerHTML = '&nbsp;';
-      cell.appendChild(spacer);
-    }
-
-    if (hasPatternForDate(iso)) {
-      const line = document.createElement('div');
-      line.className = 'pattern-line';
-      cell.appendChild(line);
-    }
-
-    const dayEvents = getEventsForDate(iso);
-    const dots = document.createElement('div');
-    dots.className = 'day-dots';
-    if (dayEvents.length) {
-      dots.innerHTML = dayEvents.slice(0, 4).map(ev => `<span class="dot"${ev.color ? ` style="background:${ev.color}"` : ''}></span>`).join('');
-    }
-    cell.appendChild(dots);
-
-    cell.addEventListener('click', () => openDayModal(iso));
-    grid.appendChild(cell);
-  }
 
   renderSquares();
   renderAccordion();
@@ -1136,8 +1077,20 @@ function polarPoint(cx, cy, r, angleDeg) {
   return { x: cx + r * Math.cos(angleRad), y: cy + r * Math.sin(angleRad) };
 }
 
+function renderCycleMiniCalendar() {
+  document.getElementById('cyclecal-label').textContent = formatMonthLabel(state.cycleCalYear, state.cycleCalMonth);
+  renderDatePickerGrid(document.getElementById('cyclecal-grid'), state.cycleCalYear, state.cycleCalMonth, {
+    isSelected: () => false,
+    onDayClick: (iso) => {
+      hideModal('modal-cycle');
+      openDayModal(iso);
+    }
+  });
+}
+
 function renderCycleWheel() {
-  const todayISO = toISO(new Date());
+  const today = new Date();
+  const todayISO = toISO(today);
   const info = getCycleInfo(todayISO);
   const svg = document.getElementById('cycle-wheel');
   const cx = 100, cy = 100, r = 80, dotRadius = 3.6;
@@ -1150,6 +1103,10 @@ function renderCycleWheel() {
   document.getElementById('cycle-blurb').textContent = PHASE_INFO[info.phase].blurb;
   document.getElementById('stat-cycle-length').textContent = `${getAvgCycleLength()} days`;
   document.getElementById('stat-period-length').textContent = `${getAvgPeriodLength()} days`;
+
+  state.cycleCalYear = today.getFullYear();
+  state.cycleCalMonth = today.getMonth();
+  renderCycleMiniCalendar();
 
   if (info.phase === 'unknown') {
     let dots = '';
@@ -1316,6 +1273,10 @@ function closeLogPeriodModal() {
   if (state.logPeriodReturnToSettings) {
     state.logPeriodReturnToSettings = false;
     showModal('modal-settings');
+  } else if (state.logPeriodReturnToCycle) {
+    state.logPeriodReturnToCycle = false;
+    renderCycleWheel();
+    showModal('modal-cycle');
   }
 }
 
@@ -1693,7 +1654,7 @@ function init() {
 
   // Calendar view cycle: dots -> squares -> accordion -> dots
   document.getElementById('btn-expand-view').addEventListener('click', () => {
-    const order = ['dots', 'squares', 'accordion'];
+    const order = ['squares', 'accordion'];
     const next = order[(order.indexOf(state.data.settings.calendarMode) + 1) % order.length];
     state.data.settings.calendarMode = next;
     saveData();
@@ -1720,7 +1681,19 @@ function init() {
   // Log period modal
   document.getElementById('btn-log-period').addEventListener('click', () => {
     state.logPeriodReturnToSettings = false;
+    state.logPeriodReturnToCycle = true;
+    hideModal('modal-cycle');
     openLogPeriodModal(null);
+  });
+  document.getElementById('btn-cyclecal-prev-month').addEventListener('click', () => {
+    state.cycleCalMonth--;
+    if (state.cycleCalMonth < 0) { state.cycleCalMonth = 11; state.cycleCalYear--; }
+    renderCycleMiniCalendar();
+  });
+  document.getElementById('btn-cyclecal-next-month').addEventListener('click', () => {
+    state.cycleCalMonth++;
+    if (state.cycleCalMonth > 11) { state.cycleCalMonth = 0; state.cycleCalYear++; }
+    renderCycleMiniCalendar();
   });
   document.getElementById('btn-log-period-prev-month').addEventListener('click', () => {
     state.logPeriodPickerMonth--;

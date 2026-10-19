@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=11" />
+  <link rel="stylesheet" href="styles.css?v=12" />
 </head>
 <body>
   <div id="app">
@@ -96,14 +96,7 @@
         <button data-mode="all" class="mode-btn">All phases</button>
       </div>
 
-      <div id="month-grid-wrap">
-        <div class="weekday-row">
-          <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
-        </div>
-        <div id="calendar-grid" class="calendar-grid"></div>
-      </div>
-
-      <div id="squares-grid-wrap" class="hidden">
+      <div id="squares-grid-wrap">
         <div class="weekday-row">
           <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
         </div>
@@ -115,8 +108,6 @@
       </div>
 
       <div class="legend" id="legend"></div>
-
-      <button id="btn-log-period" class="btn btn-accent btn-block">+ Log period</button>
     </section>
 
     <footer class="disclaimer">
@@ -253,6 +244,20 @@
       </div>
 
       <p id="cycle-blurb" class="hint" style="text-align:center;"></p>
+
+      <div class="mini-calendar">
+        <nav class="month-nav">
+          <button type="button" id="btn-cyclecal-prev-month" class="btn-icon" aria-label="Previous month">&#8592;</button>
+          <span id="cyclecal-label" class="month-nav-center"></span>
+          <button type="button" id="btn-cyclecal-next-month" class="btn-icon" aria-label="Next month">&#8594;</button>
+        </nav>
+        <div class="weekday-row">
+          <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+        </div>
+        <div id="cyclecal-grid" class="calendar-grid"></div>
+      </div>
+
+      <button id="btn-log-period" class="btn btn-accent btn-block">+ Log period</button>
 
       <div class="stat-row">
         <div class="stat-card">
@@ -463,6 +468,6 @@
   </div>
 
   <script type="module" src="firebase.js?v=1"></script>
-  <script src="app.js?v=23"></script>
+  <script src="app.js?v=24"></script>
 </body>
 </html>

@@ -674,26 +674,6 @@ body {
 .day-cell.is-ovulatory .day-num-circle { background: color-mix(in srgb, var(--phase-ovulatory) 32%, transparent); }
 .day-cell.is-luteal .day-num-circle { background: color-mix(in srgb, var(--phase-luteal) 32%, transparent); }
 
-.day-cell .ovulation-mark {
-  font-size: 0.5rem;
-  line-height: 1;
-  color: var(--phase-ovulatory);
-}
-
-.day-cell .day-dots {
-  display: flex;
-  justify-content: center;
-  gap: 3px;
-  height: 4px;
-}
-
-.day-cell .dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--text-muted);
-}
-
 /* Squares view */
 
 .squares-grid {
