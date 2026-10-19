@@ -87,6 +87,7 @@ const state = {
   editingEventId: null,
   pendingEventColor: null,
   pagerAtMonth: false,
+  brainDrawerState: 'collapsed',
   pendingPatternDates: new Set(),
   patternPickerYear: null,
   patternPickerMonth: null,
@@ -752,6 +753,7 @@ function formatGreetDate(date) {
 function renderHomeScreen() {
   const now = new Date();
   const todayISO = toISO(now);
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
   document.getElementById('greet-eyebrow').textContent = getGreeting(now);
   document.getElementById('greet-date').textContent = formatGreetDate(now);
@@ -759,12 +761,19 @@ function renderHomeScreen() {
   const info = getCycleInfo(todayISO);
   const phaseEl = document.getElementById('greet-phase');
   const phaseTextEl = document.getElementById('greet-phase-text');
-  if (info.phase === 'unknown') {
+  const statNumEl = document.getElementById('greet-stat-num');
+  const statLabelEl = document.getElementById('greet-stat-label');
+  if (info.phase === 'unknown' || !info.cycleDay) {
     phaseEl.style.color = 'var(--text-faint)';
-    phaseTextEl.textContent = 'No cycle data yet';
+    phaseTextEl.textContent = info.phase === 'unknown' ? 'No cycle data yet' : PHASE_INFO[info.phase].label;
+    statNumEl.textContent = '';
+    statLabelEl.classList.add('hidden');
   } else {
     phaseEl.style.color = getPhaseColorHex(info.phase);
     phaseTextEl.textContent = PHASE_INFO[info.phase].label;
+    statNumEl.textContent = info.cycleDay;
+    statNumEl.style.color = getPhaseColorHex(info.phase);
+    statLabelEl.classList.remove('hidden');
   }
 
   const items = getEventsForDate(todayISO).sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
@@ -772,9 +781,16 @@ function renderHomeScreen() {
   if (!items.length) {
     list.innerHTML = `<li><button type="button" class="agenda-empty" data-open-today>Nothing planned today &mdash; tap to add</button></li>`;
   } else {
-    list.innerHTML = items.map(ev => `
-      <li><button type="button" data-open-today><span class="agenda-time">${ev.time || 'Anytime'}</span><span>${ev.color ? `<span class="dot" style="background:${ev.color};display:inline-block;margin-right:7px;"></span>` : ''}${escapeHtml(ev.title)}</span></button></li>
-    `).join('');
+    list.innerHTML = items.map(ev => {
+      let isPast = false;
+      if (ev.time) {
+        const [h, m] = ev.time.split(':').map(Number);
+        isPast = (h * 60 + m) < nowMinutes;
+      }
+      return `
+        <li class="${isPast ? 'is-past' : ''}"><button type="button" data-open-today><span class="agenda-time">${ev.time || 'Anytime'}</span><span>${ev.color ? `<span class="dot" style="background:${ev.color};display:inline-block;margin-right:7px;"></span>` : ''}${escapeHtml(ev.title)}</span></button></li>
+      `;
+    }).join('');
   }
 }
 
@@ -1851,30 +1867,58 @@ function init() {
 
   window.addEventListener('resize', syncPagerHeight);
 
-  // Brain drawer: tap or drag the handle to open/close
-  function setBrainDrawerOpen(open) {
-    document.getElementById('brain-drawer').classList.toggle('open', open);
-    document.getElementById('brain-drawer-scrim').classList.toggle('visible', open);
+  // Brain drawer: tap the type bar/grip to expand, scroll past the fold to
+  // grow further, drag the grip, or tap the scrim/collapse to dismiss.
+  const BRAIN_DRAWER_ORDER = ['collapsed', 'medium', 'large'];
+
+  function setBrainDrawerState(newState) {
+    const drawer = document.getElementById('brain-drawer');
+    BRAIN_DRAWER_ORDER.forEach(s => drawer.classList.remove('state-' + s));
+    drawer.classList.add('state-' + newState);
+    document.getElementById('brain-drawer-scrim').classList.toggle('visible', newState !== 'collapsed');
+    state.brainDrawerState = newState;
+    if (newState === 'collapsed') document.getElementById('inbox-input').blur();
   }
 
-  document.getElementById('brain-drawer-handle').addEventListener('click', () => {
-    setBrainDrawerOpen(!document.getElementById('brain-drawer').classList.contains('open'));
+  document.querySelector('.inbox-bar').addEventListener('click', (e) => {
+    if (state.brainDrawerState === 'collapsed' && !e.target.closest('button')) {
+      setBrainDrawerState('medium');
+    }
   });
-  document.getElementById('brain-drawer-scrim').addEventListener('click', () => setBrainDrawerOpen(false));
+  document.getElementById('inbox-input').addEventListener('focus', () => {
+    if (state.brainDrawerState === 'collapsed') setBrainDrawerState('medium');
+  });
+  document.getElementById('brain-drawer-grip').addEventListener('click', () => {
+    setBrainDrawerState(state.brainDrawerState === 'collapsed' ? 'medium' : 'collapsed');
+  });
+  document.getElementById('brain-drawer-scrim').addEventListener('click', () => setBrainDrawerState('collapsed'));
+
+  document.getElementById('brain-drawer-body').addEventListener('scroll', (e) => {
+    if (state.brainDrawerState === 'medium' && e.target.scrollTop > 12) {
+      setBrainDrawerState('large');
+    }
+  });
 
   (function setupBrainDrawerDrag() {
-    const handle = document.getElementById('brain-drawer-handle');
+    const grip = document.getElementById('brain-drawer-grip');
     let startY = null, dragging = false;
-    handle.addEventListener('pointerdown', (e) => { startY = e.clientY; dragging = true; });
-    handle.addEventListener('pointerup', (e) => {
+    grip.addEventListener('pointerdown', (e) => { startY = e.clientY; dragging = true; });
+    grip.addEventListener('pointerup', (e) => {
       if (!dragging || startY === null) return;
       dragging = false;
       const dy = e.clientY - startY;
-      if (dy < -30) setBrainDrawerOpen(true);
-      else if (dy > 30) setBrainDrawerOpen(false);
+      const idx = BRAIN_DRAWER_ORDER.indexOf(state.brainDrawerState);
+      if (dy < -30) setBrainDrawerState(BRAIN_DRAWER_ORDER[Math.min(BRAIN_DRAWER_ORDER.length - 1, idx + 1)]);
+      else if (dy > 30) setBrainDrawerState(BRAIN_DRAWER_ORDER[Math.max(0, idx - 1)]);
       startY = null;
     });
   })();
+
+  // Today screen: tap any blank area (outside the agenda card and buttons) to go to the calendar
+  document.getElementById('page-today').addEventListener('click', (e) => {
+    if (e.target.closest('button, .agenda-card')) return;
+    goToPage('month');
+  });
 
   document.getElementById('btn-save-settings').addEventListener('click', () => {
     const cycleLen = parseInt(document.getElementById('setting-cycle-length').value, 10);

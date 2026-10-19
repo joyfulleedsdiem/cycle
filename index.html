@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=8" />
+  <link rel="stylesheet" href="styles.css?v=9" />
 </head>
 <body>
   <div id="app">
@@ -25,11 +25,18 @@
 
       <p class="greet-eyebrow" id="greet-eyebrow"></p>
       <h1 class="greet-date" id="greet-date"></h1>
-      <p class="greet-phase" id="greet-phase"><span class="dot"></span><span id="greet-phase-text"></span></p>
 
-      <hr class="divider" />
+      <div class="greet-stat" id="greet-stat">
+        <span class="greet-stat-num" id="greet-stat-num"></span>
+        <div class="greet-stat-meta">
+          <span class="greet-stat-label" id="greet-stat-label">day</span>
+          <span class="greet-phase" id="greet-phase"><span class="dot"></span><span id="greet-phase-text"></span></span>
+        </div>
+      </div>
 
-      <ul class="home-agenda-list" id="home-agenda-list"></ul>
+      <section class="agenda-card">
+        <ul class="home-agenda-list" id="home-agenda-list"></ul>
+      </section>
 
       <button type="button" class="swipe-hint" id="btn-go-month" aria-label="Go to calendar">
         <span class="swipe-dots"><span class="on"></span><span></span></span>
@@ -111,17 +118,18 @@
    </div><!-- /#pager-viewport -->
 
    <div id="brain-drawer-scrim" class="brain-drawer-scrim"></div>
-   <div id="brain-drawer" class="brain-drawer">
-     <button type="button" id="brain-drawer-handle" class="brain-drawer-handle">
-       <span class="brain-drawer-label">Brain</span>
-       <span class="brain-drawer-count" id="brain-drawer-count"></span>
-     </button>
-     <div class="brain-drawer-body">
-       <span class="hint">Jot it down. Give it a date when you're ready.</span>
-       <form id="inbox-form" class="inbox-form">
-         <input type="text" id="inbox-input" placeholder="Add something..." maxlength="140" />
-         <button type="submit" class="btn-add" aria-label="Add">+</button>
-       </form>
+   <div id="brain-drawer" class="brain-drawer state-collapsed">
+     <div id="brain-drawer-grip" class="brain-drawer-grip"></div>
+     <form id="inbox-form" class="inbox-bar">
+       <span class="inbox-bar-label">Brain</span>
+       <input type="text" id="inbox-input" placeholder="Add something..." maxlength="140" />
+       <button type="submit" class="btn-add" aria-label="Add">+</button>
+     </form>
+     <div class="brain-drawer-body" id="brain-drawer-body">
+       <div class="brain-drawer-meta">
+         <span class="hint">Jot it down. Give it a date when you're ready.</span>
+         <span class="brain-drawer-count" id="brain-drawer-count"></span>
+       </div>
        <ul id="inbox-list" class="bullet-list"></ul>
      </div>
    </div>
@@ -444,6 +452,6 @@
   </div>
 
   <script type="module" src="firebase.js?v=1"></script>
-  <script src="app.js?v=20"></script>
+  <script src="app.js?v=21"></script>
 </body>
 </html>
