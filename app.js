@@ -1772,8 +1772,21 @@ function init() {
     showModal('modal-settings');
   });
 
+  // Topbar menu (pattern log + settings)
+  document.getElementById('btn-menu').addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('topbar-menu').classList.toggle('hidden');
+  });
+  document.addEventListener('click', (e) => {
+    const menu = document.getElementById('topbar-menu');
+    if (!menu.classList.contains('hidden') && !e.target.closest('.topbar-menu-wrap')) {
+      menu.classList.add('hidden');
+    }
+  });
+
   // Pattern log modal
-  document.getElementById('btn-patterns').addEventListener('click', () => {
+  document.getElementById('menu-item-patterns').addEventListener('click', () => {
+    document.getElementById('topbar-menu').classList.add('hidden');
     openPatternsModal(toISO(new Date()));
   });
 
@@ -1829,7 +1842,8 @@ function init() {
   });
 
   // Settings modal
-  document.getElementById('btn-settings').addEventListener('click', () => {
+  document.getElementById('menu-item-settings').addEventListener('click', () => {
+    document.getElementById('topbar-menu').classList.add('hidden');
     renderSettings();
     showModal('modal-settings');
   });
