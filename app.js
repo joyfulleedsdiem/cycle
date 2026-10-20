@@ -12,6 +12,7 @@ function defaultData() {
     eventRecords: [],   // [{id, title, time: 'HH:MM'|null, startDate, endDate: 'YYYY-MM-DD', recurrence: null|{freq:'daily'|'weekly'|'biweekly', until:'YYYY-MM-DD'}, color: null|'#hex'}]
     inbox: [],           // [{id, title, createdAt}]
     patterns: [],         // [{id, text, dates: ['YYYY-MM-DD', ...], createdAt}]
+    mealLogs: [],           // [{id, date: 'YYYY-MM-DD', type: 'text'|'photo', text: string|null, photo: dataURL|null, createdAt}]
     settings: {
       cycleLengthOverride: null,
       periodLengthOverride: null,
@@ -32,6 +33,7 @@ function normalizeData(parsed) {
   if (!Array.isArray(merged.patterns)) merged.patterns = [];
   if (!Array.isArray(merged.periods)) merged.periods = [];
   if (!Array.isArray(merged.inbox)) merged.inbox = [];
+  if (!Array.isArray(merged.mealLogs)) merged.mealLogs = [];
   if (!Array.isArray(merged.eventRecords)) merged.eventRecords = [];
 
   // One-time migration from the old per-date event map (pre-span/recurrence
@@ -104,7 +106,9 @@ const state = {
   logPeriodPickerMonth: null,
   editingPeriodId: null,
   logPeriodReturnToSettings: false,
-  logPeriodReturnToCycle: false
+  logPeriodReturnToCycle: false,
+  mealDiaryDate: null,
+  editingMealId: null
 };
 
 // ---------- Date helpers ----------
@@ -269,11 +273,11 @@ function getPhaseColorHex(phase) {
 }
 
 const PHASE_INFO = {
-  menstrual: { label: 'Menstrual', tag: 'Bleeding days', blurb: 'Bleeding days. Energy is often lowest here — a good stretch for rest and lighter plans.' },
-  follicular: { label: 'Follicular', tag: 'Energy rising', blurb: 'Energy tends to rise. Often a good window for starting new projects and social plans.' },
-  ovulatory: { label: 'Ovulatory', tag: 'Peak energy', blurb: 'Around your estimated ovulation. Energy and confidence often peak — good for big or high-stakes plans.' },
-  luteal: { label: 'Luteal', tag: 'Post-ovulation', blurb: 'Post-ovulation. Energy can gradually dip and PMS symptoms may build — good stretch to protect downtime.' },
-  unknown: { label: 'Unknown', tag: 'No data yet', blurb: 'Log a period start date to see your estimated phase here.' }
+  menstrual: { label: 'Menstrual', tag: 'Bleeding days', blurb: 'Bleeding days. Energy is often lowest here — a good stretch for rest and lighter plans.', food: 'Favour iron-rich, warming foods like leafy greens, legumes, and bone broth to help replenish what you’re losing.' },
+  follicular: { label: 'Follicular', tag: 'Energy rising', blurb: 'Energy tends to rise. Often a good window for starting new projects and social plans.', food: 'Lean into light, fresh foods — lean proteins, sprouted grains, and citrus — to match your rising energy.' },
+  ovulatory: { label: 'Ovulatory', tag: 'Peak energy', blurb: 'Around your estimated ovulation. Energy and confidence often peak — good for big or high-stakes plans.', food: 'Reach for fibre-rich, antioxidant foods like raw vegetables and berries to support your peak energy.' },
+  luteal: { label: 'Luteal', tag: 'Post-ovulation', blurb: 'Post-ovulation. Energy can gradually dip and PMS symptoms may build — good stretch to protect downtime.', food: 'Choose complex carbs and magnesium-rich foods — whole grains, nuts, dark chocolate — to help steady mood and blood sugar.' },
+  unknown: { label: 'Unknown', tag: 'No data yet', blurb: 'Log a period start date to see your estimated phase here.', food: 'Log a period to get cycle-synced food suggestions here.' }
 };
 
 function getCycleInfo(dateISO) {
@@ -850,6 +854,99 @@ function renderPatternPicker() {
     isSelected: (iso) => state.pendingPatternDates.has(iso),
     onDayClick: (iso) => togglePendingPatternDate(iso)
   });
+}
+
+// ---------- Meal diary ----------
+
+function getMealsForDate(iso) {
+  return state.data.mealLogs
+    .filter(m => m.date === iso)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+function addMealEntry({ date, type, text, photo }) {
+  state.data.mealLogs.push({
+    id: uid(),
+    date,
+    type,
+    text: text || null,
+    photo: photo || null,
+    createdAt: new Date().toISOString()
+  });
+}
+
+// Downscales and JPEG-compresses a picked photo before it's stored, so meal
+// photos don't balloon localStorage/Firestore document size over time.
+function compressImageFile(file, maxDim, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
+          else { width = Math.round(width * maxDim / height); height = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function resetMealForm() {
+  state.editingMealId = null;
+  document.getElementById('meal-text-input').value = '';
+  document.getElementById('meal-text-submit').textContent = 'Add';
+  document.getElementById('meal-edit-actions').classList.add('hidden');
+}
+
+function startEditingMeal(id) {
+  const meal = state.data.mealLogs.find(m => m.id === id);
+  if (!meal || meal.type !== 'text') return;
+  state.editingMealId = id;
+  document.getElementById('meal-text-input').value = meal.text;
+  document.getElementById('meal-text-submit').textContent = 'Save';
+  document.getElementById('meal-edit-actions').classList.remove('hidden');
+  document.getElementById('meal-text-input').focus();
+}
+
+function renderMealDiary() {
+  const iso = state.mealDiaryDate;
+  const dateObj = fromISO(iso);
+  const todayISO = toISO(new Date());
+  document.getElementById('meals-day-label').textContent = dateObj.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  document.getElementById('btn-meals-today').classList.toggle('hidden', iso === todayISO);
+
+  const info = getCycleInfo(iso);
+  const phaseData = PHASE_INFO[info.phase];
+  const phaseLine = document.getElementById('meals-phase-line');
+  phaseLine.style.color = info.phase === 'unknown' ? 'var(--text-faint)' : getPhaseColorHex(info.phase);
+  phaseLine.innerHTML = `<span class="dot"></span>${phaseData.label}${info.cycleDay ? ` &middot; Day ${info.cycleDay}` : ''}`;
+  document.getElementById('meals-food-suggestion').textContent = phaseData.food;
+
+  const meals = getMealsForDate(iso);
+  const list = document.getElementById('meals-list');
+  if (!meals.length) {
+    list.innerHTML = '<li class="meal-entry-empty">Nothing logged for this day yet</li>';
+  } else {
+    list.innerHTML = meals.map(m => {
+      if (m.type === 'photo') {
+        return `<li class="meal-entry"><img class="meal-entry-photo" src="${m.photo}" alt="Meal photo" /><span class="meal-entry-text" style="flex:1;cursor:default;">Photo</span><button type="button" class="event-remove" data-remove-meal="${m.id}" aria-label="Delete">&times;</button></li>`;
+      }
+      return `<li class="meal-entry"><button type="button" class="meal-entry-text" data-edit-meal="${m.id}">${escapeHtml(m.text)}</button><button type="button" class="event-remove" data-remove-meal="${m.id}" aria-label="Delete">&times;</button></li>`;
+    }).join('');
+  }
+
+  resetMealForm();
 }
 
 // ---------- Rendering: day modal ----------
@@ -1813,6 +1910,80 @@ function init() {
     state.patternPickerMonth++;
     if (state.patternPickerMonth > 11) { state.patternPickerMonth = 0; state.patternPickerYear++; }
     renderPatternPicker();
+  });
+
+  // Meal diary modal
+  document.getElementById('menu-item-meals').addEventListener('click', () => {
+    document.getElementById('topbar-menu').classList.add('hidden');
+    state.mealDiaryDate = toISO(new Date());
+    renderMealDiary();
+    showModal('modal-meals');
+  });
+  document.getElementById('btn-meals-prev-day').addEventListener('click', () => {
+    state.mealDiaryDate = toISO(addDays(fromISO(state.mealDiaryDate), -1));
+    renderMealDiary();
+  });
+  document.getElementById('btn-meals-next-day').addEventListener('click', () => {
+    state.mealDiaryDate = toISO(addDays(fromISO(state.mealDiaryDate), 1));
+    renderMealDiary();
+  });
+  document.getElementById('btn-meals-today').addEventListener('click', () => {
+    state.mealDiaryDate = toISO(new Date());
+    renderMealDiary();
+  });
+
+  document.getElementById('meal-text-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = document.getElementById('meal-text-input');
+    const text = input.value.trim();
+    if (!text) return;
+    if (state.editingMealId) {
+      const meal = state.data.mealLogs.find(m => m.id === state.editingMealId);
+      if (meal) meal.text = text;
+    } else {
+      addMealEntry({ date: state.mealDiaryDate, type: 'text', text });
+    }
+    saveData();
+    renderMealDiary();
+  });
+
+  document.getElementById('btn-cancel-edit-meal').addEventListener('click', () => {
+    resetMealForm();
+  });
+
+  document.getElementById('btn-delete-edit-meal').addEventListener('click', () => {
+    if (!state.editingMealId) return;
+    state.data.mealLogs = state.data.mealLogs.filter(m => m.id !== state.editingMealId);
+    saveData();
+    renderMealDiary();
+  });
+
+  document.getElementById('meals-list').addEventListener('click', (e) => {
+    const editId = e.target.closest('[data-edit-meal]')?.dataset.editMeal;
+    if (editId) { startEditingMeal(editId); return; }
+    const removeId = e.target.closest('[data-remove-meal]')?.dataset.removeMeal;
+    if (removeId) {
+      state.data.mealLogs = state.data.mealLogs.filter(m => m.id !== removeId);
+      saveData();
+      renderMealDiary();
+    }
+  });
+
+  document.getElementById('btn-meal-add-photo').addEventListener('click', () => {
+    document.getElementById('meal-photo-input').click();
+  });
+  document.getElementById('meal-photo-input').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const dataUrl = await compressImageFile(file, 900, 0.7);
+      addMealEntry({ date: state.mealDiaryDate, type: 'photo', photo: dataUrl });
+      saveData();
+      renderMealDiary();
+    } catch (err) {
+      console.error('Failed to process meal photo', err);
+    }
   });
 
   // Settings modal

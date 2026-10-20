@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=12" />
+  <link rel="stylesheet" href="styles.css?v=13" />
 </head>
 <body>
   <div id="app">
@@ -59,6 +59,9 @@
             </button>
             <button type="button" id="menu-item-patterns" class="topbar-menu-item">
               <span class="topbar-menu-icon">&#12316;</span> Pattern log
+            </button>
+            <button type="button" id="menu-item-meals" class="topbar-menu-item">
+              <span class="topbar-menu-icon">&#127860;</span> Meal diary
             </button>
             <button type="button" id="menu-item-settings" class="topbar-menu-item">
               <span class="topbar-menu-icon">&#9881;</span> Settings
@@ -311,6 +314,42 @@
     </div>
   </div>
 
+  <!-- Meal diary modal -->
+  <div id="modal-meals" class="modal-overlay hidden">
+    <div class="modal">
+      <button class="modal-close" data-close="modal-meals" aria-label="Close">&times;</button>
+      <h2>Meal diary</h2>
+
+      <nav class="month-nav">
+        <button id="btn-meals-prev-day" class="btn-icon" aria-label="Previous day">&#8592;</button>
+        <div class="month-nav-center">
+          <span id="meals-day-label"></span>
+          <button id="btn-meals-today" class="btn btn-ghost">Today</button>
+        </div>
+        <button id="btn-meals-next-day" class="btn-icon" aria-label="Next day">&#8594;</button>
+      </nav>
+
+      <p id="meals-phase-line" class="meals-phase-line"></p>
+      <p id="meals-food-suggestion" class="hint"></p>
+
+      <div class="modal-section">
+        <ul id="meals-list" class="meals-list"></ul>
+      </div>
+
+      <form id="meal-text-form" class="event-form">
+        <input type="text" id="meal-text-input" placeholder="What did you eat?" maxlength="200" />
+        <button type="submit" id="meal-text-submit" class="btn btn-accent">Add</button>
+      </form>
+      <div class="edit-actions hidden" id="meal-edit-actions">
+        <button type="button" id="btn-delete-edit-meal" class="btn btn-danger">Delete</button>
+        <button type="button" id="btn-cancel-edit-meal" class="btn btn-ghost">Cancel edit</button>
+      </div>
+
+      <button type="button" id="btn-meal-add-photo" class="btn btn-ghost btn-block">+ Add a photo</button>
+      <input type="file" id="meal-photo-input" accept="image/*" capture="environment" class="hidden" />
+    </div>
+  </div>
+
   <!-- Settings modal -->
   <div id="modal-settings" class="modal-overlay hidden">
     <div class="modal">
@@ -468,6 +507,6 @@
   </div>
 
   <script type="module" src="firebase.js?v=1"></script>
-  <script src="app.js?v=24"></script>
+  <script src="app.js?v=25"></script>
 </body>
 </html>
