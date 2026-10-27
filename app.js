@@ -721,6 +721,8 @@ function renderHomeScreen() {
     statLabelEl.classList.remove('hidden');
   }
 
+  document.getElementById('agenda-label').textContent = `${now.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })} · To do today`;
+
   const items = getEventsForDate(todayISO).sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
   const list = document.getElementById('home-agenda-list');
   if (!items.length) {
@@ -737,6 +739,27 @@ function renderHomeScreen() {
       `;
     }).join('');
   }
+
+  renderHomePinboard();
+}
+
+// Deterministic per-item tilt (not Math.random) so a bubble's angle stays
+// stable across re-renders instead of jittering to a new angle each time.
+function stableAngleForId(id) {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  return (Math.abs(hash) % 7) - 3;
+}
+
+function renderHomePinboard() {
+  const items = state.data.inbox;
+  const section = document.getElementById('pinboard-section');
+  const board = document.getElementById('home-brain-pinboard');
+  section.classList.toggle('hidden', !items.length);
+  if (!items.length) { board.innerHTML = ''; return; }
+  board.innerHTML = items.map((item, i) => `
+    <button type="button" class="brain-bubble" data-pop-inbox="${item.id}" style="--tilt:${stableAngleForId(item.id)}deg; --bubble-delay:${Math.min(i, 8) * 0.05}s;">${escapeHtml(item.title)}</button>
+  `).join('');
 }
 
 // ---------- Today/Month pager ----------
@@ -1120,12 +1143,14 @@ function addInboxItem(title) {
   state.data.inbox.push({ id: uid(), title, createdAt: toISO(new Date()) });
   saveData();
   renderInbox();
+  renderHomePinboard();
 }
 
 function removeInboxItem(id) {
   state.data.inbox = state.data.inbox.filter(i => i.id !== id);
   saveData();
   renderInbox();
+  renderHomePinboard();
 }
 
 function assignInboxItemToDate(id, iso) {
@@ -1655,6 +1680,14 @@ function init() {
     if (e.target.dataset.assign) {
       assignInboxItemToDate(e.target.dataset.assign, e.target.value);
     }
+  });
+
+  document.getElementById('home-brain-pinboard').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-pop-inbox]');
+    if (!btn || btn.classList.contains('popping')) return;
+    const id = btn.dataset.popInbox;
+    btn.classList.add('popping');
+    setTimeout(() => removeInboxItem(id), 320);
   });
 
   // Day modal: add/edit event

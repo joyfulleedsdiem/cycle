@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=13" />
+  <link rel="stylesheet" href="styles.css?v=14" />
 </head>
 <body>
   <div id="app">
@@ -34,7 +34,13 @@
         </div>
       </div>
 
+      <section class="pinboard-section hidden" id="pinboard-section">
+        <p class="pinboard-label">On your mind</p>
+        <div class="brain-pinboard" id="home-brain-pinboard"></div>
+      </section>
+
       <section class="agenda-card">
+        <p class="agenda-label" id="agenda-label"></p>
         <ul class="home-agenda-list" id="home-agenda-list"></ul>
       </section>
 
@@ -507,6 +513,6 @@
   </div>
 
   <script type="module" src="firebase.js?v=1"></script>
-  <script src="app.js?v=25"></script>
+  <script src="app.js?v=26"></script>
 </body>
 </html>
