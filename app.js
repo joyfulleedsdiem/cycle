@@ -1687,6 +1687,7 @@ function init() {
     if (!btn || btn.classList.contains('popping')) return;
     const id = btn.dataset.popInbox;
     btn.classList.add('popping');
+    if (navigator.vibrate) navigator.vibrate(18);
     setTimeout(() => removeInboxItem(id), 320);
   });
 
@@ -2080,9 +2081,6 @@ function init() {
   document.getElementById('inbox-input').addEventListener('focus', () => {
     if (state.brainDrawerState === 'collapsed') setBrainDrawerState('medium');
   });
-  document.getElementById('brain-drawer-grip').addEventListener('click', () => {
-    setBrainDrawerState(state.brainDrawerState === 'collapsed' ? 'medium' : 'collapsed');
-  });
   document.getElementById('brain-drawer-scrim').addEventListener('click', () => setBrainDrawerState('collapsed'));
 
   document.getElementById('brain-drawer-body').addEventListener('scroll', (e) => {
@@ -2091,18 +2089,24 @@ function init() {
     }
   });
 
-  (function setupBrainDrawerDrag() {
+  // Grip: a single pointerdown/up pair decides tap vs. swipe, so a real drag
+  // never also fires a trailing click that would instantly undo it.
+  (function setupBrainDrawerGrip() {
     const grip = document.getElementById('brain-drawer-grip');
-    let startY = null, dragging = false;
-    grip.addEventListener('pointerdown', (e) => { startY = e.clientY; dragging = true; });
+    let startY = null;
+    grip.addEventListener('pointerdown', (e) => { startY = e.clientY; });
     grip.addEventListener('pointerup', (e) => {
-      if (!dragging || startY === null) return;
-      dragging = false;
+      if (startY === null) return;
       const dy = e.clientY - startY;
-      const idx = BRAIN_DRAWER_ORDER.indexOf(state.brainDrawerState);
-      if (dy < -30) setBrainDrawerState(BRAIN_DRAWER_ORDER[Math.min(BRAIN_DRAWER_ORDER.length - 1, idx + 1)]);
-      else if (dy > 30) setBrainDrawerState(BRAIN_DRAWER_ORDER[Math.max(0, idx - 1)]);
       startY = null;
+      const idx = BRAIN_DRAWER_ORDER.indexOf(state.brainDrawerState);
+      if (dy < -30) {
+        setBrainDrawerState(BRAIN_DRAWER_ORDER[Math.min(BRAIN_DRAWER_ORDER.length - 1, idx + 1)]);
+      } else if (dy > 30) {
+        setBrainDrawerState(BRAIN_DRAWER_ORDER[Math.max(0, idx - 1)]);
+      } else {
+        setBrainDrawerState(state.brainDrawerState === 'collapsed' ? 'medium' : 'collapsed');
+      }
     });
   })();
 
