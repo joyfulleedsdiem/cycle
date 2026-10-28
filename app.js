@@ -13,6 +13,7 @@ function defaultData() {
     inbox: [],           // [{id, title, createdAt}]
     patterns: [],         // [{id, text, dates: ['YYYY-MM-DD', ...], createdAt}]
     mealLogs: [],           // [{id, date: 'YYYY-MM-DD', type: 'text'|'photo', text: string|null, photo: dataURL|null, createdAt}]
+    shoppingList: [],        // [{id, title, checked: boolean, createdAt}]
     settings: {
       cycleLengthOverride: null,
       periodLengthOverride: null,
@@ -34,6 +35,7 @@ function normalizeData(parsed) {
   if (!Array.isArray(merged.periods)) merged.periods = [];
   if (!Array.isArray(merged.inbox)) merged.inbox = [];
   if (!Array.isArray(merged.mealLogs)) merged.mealLogs = [];
+  if (!Array.isArray(merged.shoppingList)) merged.shoppingList = [];
   if (!Array.isArray(merged.eventRecords)) merged.eventRecords = [];
 
   // One-time migration from the old per-date event map (pre-span/recurrence
@@ -108,6 +110,7 @@ const state = {
   logPeriodReturnToSettings: false,
   logPeriodReturnToCycle: false,
   mealDiaryDate: null,
+  drawerTab: 'brain',
   editingMealId: null
 };
 
@@ -1117,6 +1120,29 @@ function escapeHtml(str) {
 
 // ---------- Brain (inbox) ----------
 
+function updateDrawerCount() {
+  const count = document.getElementById('brain-drawer-count');
+  if (state.drawerTab === 'shopping') {
+    const left = state.data.shoppingList.filter(i => !i.checked).length;
+    count.textContent = left ? `${left} to get` : (state.data.shoppingList.length ? 'All done' : 'Nothing here yet');
+  } else {
+    const n = state.data.inbox.length;
+    count.textContent = n ? `${n} unsorted` : 'Nothing here yet';
+  }
+}
+
+function setDrawerTab(tab) {
+  state.drawerTab = tab;
+  document.querySelectorAll('.drawer-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
+  document.getElementById('inbox-list').classList.toggle('hidden', tab !== 'brain');
+  document.getElementById('shopping-list').classList.toggle('hidden', tab !== 'shopping');
+  document.getElementById('inbox-input').placeholder = tab === 'shopping' ? 'Add an item...' : 'Add something...';
+  document.getElementById('drawer-hint').textContent = tab === 'shopping'
+    ? 'Build your list, check items off as you grab them.'
+    : "Jot it down. Give it a date when you're ready.";
+  updateDrawerCount();
+}
+
 function renderInbox() {
   const list = document.getElementById('inbox-list');
   const items = state.data.inbox;
@@ -1132,11 +1158,7 @@ function renderInbox() {
       </li>
     `).join('');
   }
-
-  const count = document.getElementById('brain-drawer-count');
-  count.textContent = items.length
-    ? `${items.length} unsorted`
-    : 'Nothing here yet';
+  updateDrawerCount();
 }
 
 function addInboxItem(title) {
@@ -1162,6 +1184,45 @@ function assignInboxItemToDate(id, iso) {
   renderInbox();
   renderMonth();
   renderHomeScreen();
+}
+
+// ---------- Shopping list ----------
+
+function renderShoppingList() {
+  const list = document.getElementById('shopping-list');
+  const items = state.data.shoppingList;
+  if (!items.length) {
+    list.innerHTML = '<li class="inbox-empty">Nothing here yet</li>';
+  } else {
+    list.innerHTML = items.map(item => `
+      <li data-id="${item.id}" class="shopping-item${item.checked ? ' is-checked' : ''}">
+        <button type="button" class="shopping-check" data-toggle-shopping="${item.id}" aria-label="Mark as bought">${item.checked ? '&#10003;' : ''}</button>
+        <span class="inbox-title">${escapeHtml(item.title)}</span>
+        <button data-shopping-remove="${item.id}" title="Delete" aria-label="Delete">&times;</button>
+      </li>
+    `).join('');
+  }
+  updateDrawerCount();
+}
+
+function addShoppingItem(title) {
+  state.data.shoppingList.push({ id: uid(), title, checked: false, createdAt: toISO(new Date()) });
+  saveData();
+  renderShoppingList();
+}
+
+function toggleShoppingItem(id) {
+  const item = state.data.shoppingList.find(i => i.id === id);
+  if (!item) return;
+  item.checked = !item.checked;
+  saveData();
+  renderShoppingList();
+}
+
+function removeShoppingItem(id) {
+  state.data.shoppingList = state.data.shoppingList.filter(i => i.id !== id);
+  saveData();
+  renderShoppingList();
 }
 
 // ---------- Modals ----------
@@ -1575,6 +1636,7 @@ function renderAll() {
   renderMonth();
   renderHomeScreen();
   renderInbox();
+  renderShoppingList();
   renderSettings();
   syncPagerHeight();
 }
@@ -1654,13 +1716,21 @@ function init() {
     });
   });
 
-  // Brain
+  // Brain / Shopping list drawer tabs
+  document.querySelectorAll('.drawer-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setDrawerTab(btn.dataset.tab);
+      if (state.brainDrawerState === 'collapsed') setBrainDrawerState('medium');
+    });
+  });
+
   document.getElementById('inbox-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const input = document.getElementById('inbox-input');
     const title = input.value.trim();
     if (!title) return;
-    addInboxItem(title);
+    if (state.drawerTab === 'shopping') addShoppingItem(title);
+    else addInboxItem(title);
     input.value = '';
   });
 
@@ -1680,6 +1750,13 @@ function init() {
     if (e.target.dataset.assign) {
       assignInboxItemToDate(e.target.dataset.assign, e.target.value);
     }
+  });
+
+  document.getElementById('shopping-list').addEventListener('click', (e) => {
+    const toggleId = e.target.closest('[data-toggle-shopping]')?.dataset.toggleShopping;
+    const removeId = e.target.closest('[data-shopping-remove]')?.dataset.shoppingRemove;
+    if (toggleId) toggleShoppingItem(toggleId);
+    else if (removeId) removeShoppingItem(removeId);
   });
 
   document.getElementById('home-brain-pinboard').addEventListener('click', (e) => {

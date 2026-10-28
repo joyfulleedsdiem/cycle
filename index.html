@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=14" />
+  <link rel="stylesheet" href="styles.css?v=15" />
 </head>
 <body>
   <div id="app">
@@ -131,17 +131,21 @@
    <div id="brain-drawer-scrim" class="brain-drawer-scrim"></div>
    <div id="brain-drawer" class="brain-drawer state-collapsed">
      <div id="brain-drawer-grip" class="brain-drawer-grip"></div>
+     <div class="drawer-tabs" id="drawer-tabs">
+       <button type="button" class="drawer-tab active" data-tab="brain">Brain</button>
+       <button type="button" class="drawer-tab" data-tab="shopping">Shopping list</button>
+     </div>
      <form id="inbox-form" class="inbox-bar">
-       <span class="inbox-bar-label">Brain</span>
        <input type="text" id="inbox-input" placeholder="Add something..." maxlength="140" />
        <button type="submit" class="btn-add" aria-label="Add">+</button>
      </form>
      <div class="brain-drawer-body" id="brain-drawer-body">
        <div class="brain-drawer-meta">
-         <span class="hint">Jot it down. Give it a date when you're ready.</span>
+         <span class="hint" id="drawer-hint">Jot it down. Give it a date when you're ready.</span>
          <span class="brain-drawer-count" id="brain-drawer-count"></span>
        </div>
        <ul id="inbox-list" class="bullet-list"></ul>
+       <ul id="shopping-list" class="bullet-list hidden"></ul>
      </div>
    </div>
   </div>
@@ -513,6 +517,6 @@
   </div>
 
   <script type="module" src="firebase.js?v=1"></script>
-  <script src="app.js?v=27"></script>
+  <script src="app.js?v=28"></script>
 </body>
 </html>
