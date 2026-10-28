@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=15" />
+  <link rel="stylesheet" href="styles.css?v=16" />
 </head>
 <body>
   <div id="app">
@@ -330,33 +330,49 @@
       <button class="modal-close" data-close="modal-meals" aria-label="Close">&times;</button>
       <h2>Meal diary</h2>
 
-      <nav class="month-nav">
-        <button id="btn-meals-prev-day" class="btn-icon" aria-label="Previous day">&#8592;</button>
-        <div class="month-nav-center">
-          <span id="meals-day-label"></span>
-          <button id="btn-meals-today" class="btn btn-ghost">Today</button>
+      <div class="phase-mode-toggle" id="meals-mode-toggle">
+        <button type="button" data-mode="day" class="mode-btn active">Day</button>
+        <button type="button" data-mode="week" class="mode-btn">This week</button>
+      </div>
+
+      <div id="meals-day-view">
+        <nav class="month-nav">
+          <button id="btn-meals-prev-day" class="btn-icon" aria-label="Previous day">&#8592;</button>
+          <div class="month-nav-center">
+            <span id="meals-day-label"></span>
+            <button id="btn-meals-today" class="btn btn-ghost">Today</button>
+          </div>
+          <button id="btn-meals-next-day" class="btn-icon" aria-label="Next day">&#8594;</button>
+        </nav>
+
+        <p id="meals-phase-line" class="meals-phase-line"></p>
+        <p id="meals-food-suggestion" class="hint"></p>
+
+        <div class="modal-section">
+          <ul id="meals-list" class="meals-list"></ul>
         </div>
-        <button id="btn-meals-next-day" class="btn-icon" aria-label="Next day">&#8594;</button>
-      </nav>
 
-      <p id="meals-phase-line" class="meals-phase-line"></p>
-      <p id="meals-food-suggestion" class="hint"></p>
+        <form id="meal-text-form" class="event-form">
+          <input type="text" id="meal-text-input" placeholder="What did you eat?" maxlength="200" />
+          <button type="submit" id="meal-text-submit" class="btn btn-accent">Add</button>
+        </form>
+        <div class="edit-actions hidden" id="meal-edit-actions">
+          <button type="button" id="btn-delete-edit-meal" class="btn btn-danger">Delete</button>
+          <button type="button" id="btn-cancel-edit-meal" class="btn btn-ghost">Cancel edit</button>
+        </div>
 
-      <div class="modal-section">
-        <ul id="meals-list" class="meals-list"></ul>
+        <button type="button" id="btn-meal-add-photo" class="btn btn-ghost btn-block">+ Add a photo</button>
+        <input type="file" id="meal-photo-input" accept="image/*" capture="environment" class="hidden" />
       </div>
 
-      <form id="meal-text-form" class="event-form">
-        <input type="text" id="meal-text-input" placeholder="What did you eat?" maxlength="200" />
-        <button type="submit" id="meal-text-submit" class="btn btn-accent">Add</button>
-      </form>
-      <div class="edit-actions hidden" id="meal-edit-actions">
-        <button type="button" id="btn-delete-edit-meal" class="btn btn-danger">Delete</button>
-        <button type="button" id="btn-cancel-edit-meal" class="btn btn-ghost">Cancel edit</button>
+      <div id="meals-week-view" class="hidden">
+        <nav class="month-nav">
+          <button id="btn-meals-week-prev" class="btn-icon" aria-label="Previous week">&#8592;</button>
+          <span id="meals-week-label" class="month-nav-center"></span>
+          <button id="btn-meals-week-next" class="btn-icon" aria-label="Next week">&#8594;</button>
+        </nav>
+        <div id="meals-week-list" class="accordion-list"></div>
       </div>
-
-      <button type="button" id="btn-meal-add-photo" class="btn btn-ghost btn-block">+ Add a photo</button>
-      <input type="file" id="meal-photo-input" accept="image/*" capture="environment" class="hidden" />
     </div>
   </div>
 
@@ -517,6 +533,6 @@
   </div>
 
   <script type="module" src="firebase.js?v=1"></script>
-  <script src="app.js?v=28"></script>
+  <script src="app.js?v=29"></script>
 </body>
 </html>

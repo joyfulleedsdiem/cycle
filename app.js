@@ -110,6 +110,8 @@ const state = {
   logPeriodReturnToSettings: false,
   logPeriodReturnToCycle: false,
   mealDiaryDate: null,
+  mealsMode: 'day',
+  mealsWeekStart: null,
   drawerTab: 'brain',
   editingMealId: null
 };
@@ -605,19 +607,12 @@ function renderAccordion() {
     if (dayEvents.length) {
       const itemsList = document.createElement('div');
       itemsList.className = 'accordion-items';
-      const itemCap = isToday ? dayEvents.length : 2;
-      dayEvents.slice(0, itemCap).forEach(ev => {
+      dayEvents.forEach(ev => {
         const item = document.createElement('div');
         item.className = 'accordion-item';
         item.innerHTML = `<span class="accordion-item-time">${ev.time || 'Anytime'}</span><span>${ev.color ? `<span class="dot" style="background:${ev.color};display:inline-block;margin-right:6px;"></span>` : ''}${escapeHtml(ev.title)}</span>`;
         itemsList.appendChild(item);
       });
-      if (!isToday && dayEvents.length > itemCap) {
-        const more = document.createElement('div');
-        more.className = 'accordion-item-more';
-        more.textContent = `+${dayEvents.length - itemCap} more`;
-        itemsList.appendChild(more);
-      }
       row.appendChild(itemsList);
     } else if (!isToday) {
       const ghost = document.createElement('p');
@@ -973,6 +968,85 @@ function renderMealDiary() {
   }
 
   resetMealForm();
+}
+
+function setMealsMode(mode) {
+  state.mealsMode = mode;
+  document.querySelectorAll('#meals-mode-toggle .mode-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === mode));
+  document.getElementById('meals-day-view').classList.toggle('hidden', mode !== 'day');
+  document.getElementById('meals-week-view').classList.toggle('hidden', mode !== 'week');
+  if (mode === 'week') {
+    if (!state.mealsWeekStart) state.mealsWeekStart = getWeekStart(fromISO(state.mealDiaryDate || toISO(new Date())));
+    renderMealsWeek();
+  }
+}
+
+// Mirrors the calendar's accordion week view (same row/markup classes) but
+// lists meal-diary entries per day instead of calendar events.
+function renderMealsWeek() {
+  const weekStart = state.mealsWeekStart;
+  document.getElementById('meals-week-label').textContent = formatWeekLabel(weekStart);
+
+  const list = document.getElementById('meals-week-list');
+  list.innerHTML = '';
+  const todayISO = toISO(new Date());
+  const phaseMode = state.data.settings.phaseMode;
+
+  for (let i = 0; i < 7; i++) {
+    const dateObj = addDays(weekStart, i);
+    const iso = toISO(dateObj);
+    const info = getCycleInfo(iso);
+    const isToday = iso === todayISO;
+    const meals = getMealsForDate(iso);
+
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'accordion-row' + (isToday ? ' expanded' : '');
+    applyPhaseClasses(row, info, phaseMode);
+
+    const head = document.createElement('div');
+    head.className = 'accordion-row-head';
+    head.innerHTML = `
+      <span class="accordion-day-name">${dateObj.toLocaleDateString(undefined, { weekday: 'long' })}</span>
+      <span class="accordion-day-date">${dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+    `;
+    row.appendChild(head);
+
+    if (isToday) {
+      const phaseData = PHASE_INFO[info.phase];
+      const phaseLine = document.createElement('p');
+      phaseLine.className = 'accordion-phase';
+      phaseLine.style.color = getPhaseColorHex(info.phase);
+      phaseLine.innerHTML = `<span class="dot"></span>${phaseData.label}`;
+      row.appendChild(phaseLine);
+    }
+
+    if (meals.length) {
+      const itemsList = document.createElement('div');
+      itemsList.className = 'accordion-items';
+      meals.forEach(m => {
+        const item = document.createElement('div');
+        item.className = 'accordion-item';
+        item.innerHTML = m.type === 'photo'
+          ? `<img src="${m.photo}" alt="Meal photo" style="width:30px;height:30px;border-radius:7px;object-fit:cover;flex-shrink:0;" /><span>Photo</span>`
+          : `<span>${escapeHtml(m.text)}</span>`;
+        itemsList.appendChild(item);
+      });
+      row.appendChild(itemsList);
+    } else {
+      const ghost = document.createElement('p');
+      ghost.className = 'accordion-ghost';
+      ghost.textContent = 'Nothing logged — tap to add';
+      row.appendChild(ghost);
+    }
+
+    row.addEventListener('click', () => {
+      state.mealDiaryDate = iso;
+      setMealsMode('day');
+      renderMealDiary();
+    });
+    list.appendChild(row);
+  }
 }
 
 // ---------- Rendering: day modal ----------
@@ -2027,6 +2101,8 @@ function init() {
   document.getElementById('menu-item-meals').addEventListener('click', () => {
     document.getElementById('topbar-menu').classList.add('hidden');
     state.mealDiaryDate = toISO(new Date());
+    state.mealsWeekStart = null;
+    setMealsMode('day');
     renderMealDiary();
     showModal('modal-meals');
   });
@@ -2041,6 +2117,18 @@ function init() {
   document.getElementById('btn-meals-today').addEventListener('click', () => {
     state.mealDiaryDate = toISO(new Date());
     renderMealDiary();
+  });
+
+  document.querySelectorAll('#meals-mode-toggle .mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => setMealsMode(btn.dataset.mode));
+  });
+  document.getElementById('btn-meals-week-prev').addEventListener('click', () => {
+    state.mealsWeekStart = addDays(state.mealsWeekStart, -7);
+    renderMealsWeek();
+  });
+  document.getElementById('btn-meals-week-next').addEventListener('click', () => {
+    state.mealsWeekStart = addDays(state.mealsWeekStart, 7);
+    renderMealsWeek();
   });
 
   document.getElementById('meal-text-form').addEventListener('submit', (e) => {

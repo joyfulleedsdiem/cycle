@@ -916,12 +916,6 @@ body {
   color: var(--text-faint);
 }
 
-.accordion-item-more {
-  font-size: 0.74rem;
-  color: var(--text-muted);
-  margin-top: 2px;
-}
-
 .accordion-ghost {
   font-size: 0.78rem;
   color: var(--text-faint);
